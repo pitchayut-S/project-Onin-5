@@ -1,20 +1,70 @@
 <?php
-// index.php
-// ส่วนของ PHP: ตรวจสอบการส่งค่าจากทั้ง 2 ฟอร์ม
+session_start();
+require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
+
+// ตรวจสอบการส่งค่าจากฟอร์ม
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    
-    // เราใช้ตัวแปร hidden ชื่อ 'action' เพื่อแยกแยะว่าฟอร์มไหนถูกส่งมา
+
+    // ------------------- ส่วน Login -------------------
     if (isset($_POST['action']) && $_POST['action'] == 'login') {
-        // --- ส่วน Login ---
-        $username = $_POST['username'];
+        $username = mysqli_real_escape_string($conn, $_POST['username']);
+        $password = $_POST['password'] ?? ''; // รหัสผ่านที่กรอกมา
+
+        // ดึงข้อมูล User จากฐานข้อมูล
+        $sql = "SELECT * FROM users WHERE username = '$username'";
+        $result = mysqli_query($conn, $sql);
+
+        if (mysqli_num_rows($result) == 1) {
+            $row = mysqli_fetch_assoc($result);
+            // ตรวจสอบรหัสผ่าน (เทียบรหัสที่กรอก กับ Hash ในฐานข้อมูล)
+            if (password_verify($password, $row['password'])) {
+                // ล็อกอินสำเร็จ
+                $_SESSION['userid'] = $row['id'];
+                $_SESSION['username'] = $row['fullname']; // เก็บชื่อจริงไปแสดง
+                header("Location: dashboard.php");
+                exit();
+            } else {
+                echo "<script>alert('รหัสผ่านไม่ถูกต้อง');</script>";
+            }
+        } else {
+            echo "<script>alert('ไม่พบชื่อผู้ใช้งานนี้ในระบบ');</script>";
+        }
+    } 
+    
+    // ------------------- ส่วน Register -------------------
+    elseif (isset($_POST['action']) && $_POST['action'] == 'register') {
+        $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
+        $phone = mysqli_real_escape_string($conn, $_POST['phone']);
+        $username = mysqli_real_escape_string($conn, $_POST['username']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
         $password = $_POST['password'];
-        echo "<script>alert('Login: $username');</script>";
-        
-    } elseif (isset($_POST['action']) && $_POST['action'] == 'register') {
-        // --- ส่วน Register ---
-        $fullname = $_POST['fullname'];
-        $username = $_POST['username'];
-        echo "<script>alert('สมัครสมาชิกสำเร็จ! ยินดีต้อนรับคุณ $fullname');</script>";
+        $confirm_password = $_POST['confirm_password'];
+
+        // เช็คว่ารหัสผ่านตรงกันไหม
+        if ($password !== $confirm_password) {
+            echo "<script>alert('รหัสผ่านยืนยันไม่ตรงกัน');</script>";
+        } else {
+            // เช็คว่า Username ซ้ำไหม
+            $check_user = "SELECT * FROM users WHERE username = '$username'";
+            $query_check = mysqli_query($conn, $check_user);
+
+            if (mysqli_num_rows($query_check) > 0) {
+                echo "<script>alert('ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาเปลี่ยนใหม่');</script>";
+            } else {
+                // เข้ารหัส Password เพื่อความปลอดภัย (Hash)
+                $password_hashed = password_hash($password, PASSWORD_DEFAULT);
+
+                // บันทึกลงฐานข้อมูล
+                $sql = "INSERT INTO users (fullname, phone, username, password, email) 
+                        VALUES ('$fullname', '$phone', '$username', '$password_hashed', '$email')";
+
+                if (mysqli_query($conn, $sql)) {
+                    echo "<script>alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');</script>";
+                } else {
+                    echo "<script>alert('เกิดข้อผิดพลาด: " . mysqli_error($conn) . "');</script>";
+                }
+            }
+        }
     }
 }
 ?>
@@ -26,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onin Shop Stock - ระบบบริหารจัดการสต็อก</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    
     
     <style>
         /* --- CSS พื้นฐาน --- */
@@ -135,11 +186,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                 <div class="form-group">
                     <label>ชื่อผู้ใช้งาน</label>
-                    <input type="text" name="username" placeholder="กรุณากรอก ชื่อผู้ใช้งาน" required>
+                    <input type="text" name="username" id="username" placeholder="กรุณากรอก ชื่อผู้ใช้งาน" required>
                 </div>
                 <div class="form-group">
                     <label>รหัสผ่าน</label>
-                    <input type="password" name="password" placeholder="กรุณากรอก รหัสผ่าน" required>
+                    <input type="password" name="password" id="password" placeholder="กรุณากรอก รหัสผ่าน" required>
                 </div>
                 <div class="btn-container">
                     <span class="link-switch" onclick="switchModal('register')">สมัครสมาชิกใหม่?</span>
@@ -223,6 +274,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         }
     </script>
+    
 
 </body>
 </html>
