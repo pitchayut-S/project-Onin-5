@@ -1,12 +1,16 @@
 <?php
-$host = "localhost";
-$user = "root"; 
-$pass = "";
-$dbname = "oninshop";
+$servername = "localhost";
+$username = "root";
+$password = ""; // ปกติ XAMPP จะไม่มีรหัสผ่าน (ปล่อยว่างไว้)
+$dbname = "onin_shop";
 
-$conn = new mysqli($host, $user, $pass, $dbname);
+// สร้างการเชื่อมต่อ
+$conn = mysqli_connect($servername, $username, $password, $dbname);
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
+// ตรวจสอบการเชื่อมต่อ
+if (!$conn) {
+    die("Connection failed: " . mysqli_connect_error());
 }
+// ตั้งค่าภาษาไทยให้รองรับ UTF-8
+mysqli_set_charset($conn, "utf8");
 ?>
