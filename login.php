@@ -21,8 +21,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION['userid'] = $row['id'];
             $_SESSION['username'] = $row['username'];
             $_SESSION['fullname'] = $row['fullname'];
-
-            echo "<script>alert('เข้าสู่ระบบสำเร็จ'); window.location='dashboard.php';</script>";
+            echo "
+                <!DOCTYPE html>
+                <html lang='en'>
+                <head>
+                    <meta charset='UTF-8'>
+                    <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                </head>
+                <body>
+                    <script>
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Login successful',
+                            showConfirmButton: false,
+                            timer: 1500
+                        }).then(() => {
+                            window.location = 'dashboard.php';
+                        });
+                    </script>
+                </body>
+                </html>
+            ";
             exit();
         }
     }
@@ -30,3 +49,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     echo "<script>alert('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง'); window.location='index.php';</script>";
 }
 ?>
+    

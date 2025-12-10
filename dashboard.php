@@ -1,13 +1,29 @@
-<?php
+﻿<?php
 session_start();
+require_once "db.php";
 
-// ตรวจสอบว่าล็อกอินหรือยัง (ถ้ายังไม่ล็อกอินให้เด้งกลับไปหน้า index)
-// หมายเหตุ: คุณต้อง set $_SESSION['username'] ในหน้า index.php ตอนล็อกอินสำเร็จก่อนหน้านี้ด้วยนะครับ
+// ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['username'])) {
-    // ถ้ายังไม่ได้เขียนระบบ Session จริงจัง ให้ comment บรรทัดข้างล่างนี้ไว้ก่อนได้ครับ
-    // header("Location: index.php"); 
-    // exit();
+    header("Location: index.php");
+    exit();
 }
+
+$search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
+$products = [];
+
+// $base_sql = "SELECT id, product_code, name, category, unit, selling_price, quantity FROM products";
+// $order_by = " ORDER BY id DESC";
+
+// if ($search_text !== "") {
+//     $like = "%" . $search_text . "%";
+//     $stmt = $conn->prepare($base_sql . " WHERE product_code LIKE ? OR name LIKE ? OR category LIKE ?" . $order_by);
+//     $stmt->bind_param("sss", $like, $like, $like);
+//     $stmt->execute();
+//     $products = $stmt->get_result();
+//     $stmt->close();
+// } else {
+//     $products = $conn->query($base_sql . $order_by);
+// }
 ?>
 
 <!DOCTYPE html>
@@ -15,308 +31,97 @@ if (!isset($_SESSION['username'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Onin Shop Stock</title>
+    <title>สินค้า - Onin Shop Stock</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    
+
     <style>
-        /* --- ตั้งค่าพื้นฐาน --- */
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Prompt', sans-serif;
-        }
-
-        body {
-            display: flex;
-            min-height: 100vh;
-            background-color: #E5E5E5; /* สีพื้นหลังเทาอ่อนๆ ตามรูป */
-        }
-
-        /* --- Sidebar (เมนูด้านซ้าย) --- */
-        .sidebar {
-            width: 250px;
-            background-color: #356CB5; /* สีน้ำเงินหลัก */
-            color: white;
-            display: flex;
-            flex-direction: column;
-            position: fixed;
-            height: 100%;
-            left: 0;
-            top: 0;
-            z-index: 100;
-        }
-
-        .sidebar-header { padding: 20px; font-size: 20px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); }
-
-        .menu-list {
-            list-style: none;
-            flex-grow: 1; /* ดันเนื้อหาที่เหลือลงล่าง */
-            padding-top: 10px;
-        }
-
-        .menu-list li a {
-            display: flex;
-            align-items: center;
-            padding: 15px 20px;
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            font-size: 16px;
-            transition: 0.3s;
-        }
-
-        .menu-list li a:hover, .menu-list li a.active {
-            background-color: rgba(255,255,255,0.2);
-            color: white;
-            border-left: 4px solid white;
-        }
-
-        .menu-list li a i {
-            width: 30px; /* จัดระยะห่างไอคอน */
-            font-size: 18px;
-        }
-
-        /* เมนูส่วนล่าง (บัญชี / ออกจากระบบ) */
-        .sidebar-footer {
-            margin-top: auto;   /* ดันลงล่างสุด (จะทำงานได้เมื่อมีที่ว่าง) */
-            flex-grow: 0 !important; /* สำคัญ! บังคับไม่ให้กล่องนี้ยืดแย่งพื้นที่กับข้างบน */
-            width: 100%;
-        }
-        
-        .btn-logout {
-            background-color: #D90429; /* สีแดง */
-            color: white !important;
-        }
-        .btn-logout:hover { background-color: #b0021f; }
-
-        /* --- Main Content (เนื้อหาหลัก) --- */
-        .main-content {
-            margin-left: 250px; /* เว้นที่ให้ Sidebar */
-            width: calc(100% - 250px);
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Navbar ด้านบน */
-        .top-navbar {
-            height: 60px;
-            background-color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 30px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .nav-left i {
-            font-size: 24px;
-            cursor: pointer;
-            color: #333;
-        }
-
-        .nav-right img {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 2px solid #ddd;
-        }
-
-        /* พื้นที่ Dashboard */
-        .content-container {
-            padding: 30px;
-        }
-
-        .page-title {
-            font-size: 28px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            color: #333;
-        }
-
-        /* Grid ของการ์ด */
-        .card-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr); /* แบ่ง 4 คอลัมน์ */
-            gap: 20px;
-        }
-
-        /* ตัวการ์ด */
-        .card {
-            background-color: white;
+        /* กล่องค้นหา + ตาราง */
+        .content-container { padding: 30px; }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .search-box {
+            background: #fff;
+            padding: 18px 20px;
             border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            height: 160px;
-            border: 1px solid #ddd;
-        }
-
-        .card-body {
-            padding: 20px;
-        }
-
-        .card-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 10px;
-        }
-
-        .card-value {
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 5px;
-        }
-        
-        .card-sub-value {
-            font-size: 14px;
-            color: #888;
-        }
-
-        /* Footer ของการ์ด (แถบสีด้านล่าง) */
-        .card-footer {
-            color: white;
-            padding: 8px 15px;
-            font-size: 12px;
-            display: flex;
-            justify-content: space-between;
+            gap: 10px;
             align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+            margin-bottom: 16px;
+        }
+        .search-box input {
+            flex: 1;
+            border: none;
+            background: #eef2f6;
+            padding: 12px 14px;
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+        .btn-search,
+        .btn-reset {
+            border: none;
             cursor: pointer;
-            text-decoration: none;
+            border-radius: 8px;
+            padding: 11px 18px;
+            font-weight: 600;
+            font-size: 14px;
         }
-
-        /* สีของการ์ดแต่ละใบ */
-        .card-blue .card-footer { background-color: #3544C4; } /* น้ำเงินเข้ม */
-        .card-yellow .card-footer { background-color: #D4AF37; } /* เหลืองทอง */
-        .card-green .card-footer { background-color: #1DA828; } /* เขียว */
-        .card-red .card-footer { background-color: #C70000; } /* แดง */
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .card-grid { grid-template-columns: repeat(2, 1fr); } /* จอเล็กลง เหลือ 2 คอลัมน์ */
+        .btn-search { background: #356CB5; color: #fff; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-search:hover { background: #285291; }
+        .btn-reset { background: #e7ebf0; color: #333; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+        .btn-reset:hover { background: #d8dde4; }
+        .table-container {
+            background: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.04);
+            overflow-x: auto;
         }
-        @media (max-width: 768px) {
-            .sidebar { width: 70px; }
-            .sidebar-header, .menu-text { display: none; } /* ย่อเมนู */
-            .menu-list li a { justify-content: center; padding: 15px 0; }
-            .menu-list li a i { width: auto; font-size: 24px; }
-            .main-content { margin-left: 70px; width: calc(100% - 70px); }
-            .card-grid { grid-template-columns: 1fr; } /* มือถือ เหลือ 1 คอลัมน์ */
+        table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #eef1f4; }
+        th { background: #f3f6fb; color: #333; font-weight: 600; }
+        tr:hover td { background: #f9fbff; }
+        .badge {
+            display: inline-block;
+            padding: 6px 10px;
+            border-radius: 12px;
+            background: #e7f1ff;
+            color: #356CB5;
+            font-weight: 600;
+            font-size: 12px;
         }
+        .stock-ok { color: #1b9c5a; background: #e6f6ed; }
+        .stock-low { color: #c0392b; background: #fdecea; }
     </style>
 </head>
 <body>
-
-    <nav class="sidebar">
-        <div class="sidebar-header">Onin Shop Stock</div>
-        <ul class="menu-list">
-            <li><a href="dashboard.php" class="active"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
-            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ตรวจสอบสินค้า</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-cart-shopping"></i> <span class="menu-text">สต๊อกสินค้า</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-file-invoice"></i> <span class="menu-text">รายงาน</span></a></li>
-        </ul>
-
-        <div class="sidebar-footer menu-list">
-            <li><a href="#"><i class="fa-solid fa-user-gear"></i> <span class="menu-text">การจัดการบัญชี</span></a></li>
-            <li><a href="index.php" class="btn-logout" onclick="confirmLogout(); return false;">
-                <i class="fa-solid fa-power-off"></i> <span class="menu-text">ออกจากระบบ</span></a></li>
-        </div>
-    </nav>
+    <?php include "sidebar.php"; ?>
 
     <div class="main-content">
         <div class="top-navbar">
             <div class="nav-left">
-                <i class="fa-solid fa-bars"></i> 
+                <i class="fa-solid fa-bars"></i>
             </div>
             <div class="nav-right">
-                <?php $user_display = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin'; ?>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-weight:500; color:#333;"><?php echo $user_display; ?></span>
-                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_display); ?>&background=0D8ABC&color=fff" alt="User Profile">
-                </div>
+                <img src="img/profile.png" alt="Profile">
             </div>
         </div>
 
         <div class="content-container">
-            <h2 class="page-title">Dashboard</h2>
+            <div class="page-title">Dashboard</div>
 
-            <div class="card-grid">
-                
-                <div class="card card-blue">
-                    <div class="card-body">
-                        <div class="card-title">ผลรวมสินค้า</div>
-                        <div class="card-value">จำนวน 50 สินค้า</div>
-                    </div>
-                    <a href="#" class="card-footer">
-                        เพิ่มสินค้า <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                </div>
+            <form class="search-box" method="get" action="product.php">
+                <input type="text" name="search" placeholder="พิมพ์เพื่อค้นหาสินค้า (รหัส / ชื่อ / ประเภท)" value="<?= htmlspecialchars($search_text, ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา</button>
+                <?php if ($search_text !== ""): ?>
+                    <a class="btn-reset" href="product.php"><i class="fa-solid fa-rotate-left"></i> ล้างการค้นหา</a>
+                <?php endif; ?>
+            </form>
+            <div> นี่คือหน้า Dashboard</div>
 
-                <div class="card card-yellow">
-                    <div class="card-body">
-                        <div class="card-title">สินค้าคงเหลือ</div>
-                        <div class="card-value">จำนวน 40 ชิ้น</div>
-                    </div>
-                    <a href="#" class="card-footer">
-                        เช็คสินค้า <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                </div>
-
-                <div class="card card-green">
-                    <div class="card-body">
-                        <div class="card-title">ยอดขายทั้งหมด</div>
-                        <div class="card-value">ทั้งหมด 1000.00 บาท</div>
-                        <div class="card-sub-value">วันนี้ 0.00 บาท</div>
-                    </div>
-                    <a href="#" class="card-footer">
-                        ดูเพิ่มเติม <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                </div>
-
-                <div class="card card-red">
-                    <div class="card-body">
-                        <div class="card-title">สินค้าค้างสต๊อก</div>
-                        <div class="card-value">จำนวน 10 ชิ้น</div>
-                    </div>
-                    <a href="#" class="card-footer">
-                        ดูเพิ่มเติม <i class="fa-solid fa-chevron-right"></i>
-                    </a>
-                </div>
-
-            </div>
         </div>
     </div>
-    <div id="logoutModal" class="modal-overlay">
-    <div class="login-box logout-modal-content">
-        <i class="fa-solid fa-right-from-bracket logout-icon"></i>
-        <h2 class="logout-title">ยืนยันการออกจากระบบ</h2>
-        <p class="logout-desc">คุณต้องการออกจากระบบใช่หรือไม่?</p>
-        
-        <div style="display: flex; justify-content: center; gap: 15px;">
-            <button class="btn-cancel" onclick="closeLogoutModal()">ยกเลิก</button>
-            <a href="logout.php" class="btn-confirm-logout">ออกจากระบบ</a>
-        </div>
-    </div>
-</div>
-
-<script>
-    // ฟังก์ชันเปิด Popup Logout
-    function confirmLogout() {
-        document.getElementById('logoutModal').style.display = 'flex';
-    }
-
-    // ฟังก์ชันปิด Popup Logout
-    function closeLogoutModal() {
-        document.getElementById('logoutModal').style.display = 'none';
-    }
-</script>
-
 </body>
 </html>

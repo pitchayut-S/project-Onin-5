@@ -110,7 +110,7 @@ $products = [];
         </div>
 
         <div class="content-container">
-            <div class="page-title">ข้อมูลสินค้า</div>
+            <div class="page-title">รายงาน</div>
 
             <form class="search-box" method="get" action="product.php">
                 <input type="text" name="search" placeholder="พิมพ์เพื่อค้นหาสินค้า (รหัส / ชื่อ / ประเภท)" value="<?= htmlspecialchars($search_text, ENT_QUOTES, 'UTF-8') ?>">
@@ -120,49 +120,6 @@ $products = [];
                 <?php endif; ?>
             </form>
 
-            <div class="table-container">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>รหัสสินค้า</th>
-                            <th>ชื่อสินค้า</th>
-                            <th>ประเภท</th>
-                            <th>หน่วย</th>
-                            <th>ราคาขาย</th>
-                            <th>คงเหลือ</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php if ($products && $products->num_rows > 0): ?>
-                            <?php $row_no = 1; ?>
-                            <?php while ($row = $products->fetch_assoc()): ?>
-                                <?php
-                                    $stock_class = ($row['quantity'] > 0) ? "stock-ok" : "stock-low";
-                                    $stock_label = ($row['quantity'] > 0) ? "มีสต๊อก" : "หมด";
-                                ?>
-                                <tr>
-                                    <td><?= $row_no++; ?></td>
-                                    <td><?= htmlspecialchars($row['product_code']); ?></td>
-                                    <td><?= htmlspecialchars($row['name']); ?></td>
-                                    <td><?= htmlspecialchars($row['category']); ?></td>
-                                    <td><?= htmlspecialchars($row['unit']); ?></td>
-                                    <td><?= number_format($row['selling_price'], 2); ?></td>
-                                    <td>
-                                        <span class="badge <?= $stock_class; ?>">
-                                            <?= htmlspecialchars($row['quantity']); ?> | <?= $stock_label; ?>
-                                        </span>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else: ?>
-                            <tr>
-                                <td colspan="7" style="text-align:center; color:#888;">ไม่พบข้อมูลสินค้า</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
         </div>
     </div>
 </body>

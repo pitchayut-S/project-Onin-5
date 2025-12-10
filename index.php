@@ -1,6 +1,12 @@
 <?php
 session_start();
 require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
+if (!isset($menu_config)) {
+    require_once __DIR__ . '/menu-sidebar.php';
+}
+
+$current_page = basename(path: $_SERVER['PHP_SELF']);
+require_once __DIR__ . '/components/alert.php';
 
 // ตรวจสอบการส่งค่าจากฟอร์ม
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
