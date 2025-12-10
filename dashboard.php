@@ -218,7 +218,7 @@ if (!isset($_SESSION['username'])) {
             <li><a href="dashboard.php" class="active"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
             <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
             <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-cart-shopping"></i> <span class="menu-text">สต๊อกสินค้า</span></a></li>
+            <li><a href="stock_in.php" ><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
             <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
             <li><a href="#"><i class="fa-solid fa-file-invoice"></i> <span class="menu-text">รายงาน</span></a></li>
         </ul>

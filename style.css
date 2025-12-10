@@ -380,3 +380,7 @@ th { background-color: #E0E0E0; font-weight: 600; color: #333; }
     display: inline-block;
 }
 .btn-confirm-logout:hover { background-color: #b0021f; }
+
+/* เพิ่มปุ่ม Action สีเขียว (สำหรับกดรับเข้าในตาราง) */
+.btn-in { background-color: #1DA828; } /* สีเขียวเดียวกับ Card */
+.btn-in:hover { background-color: #16801e; }
