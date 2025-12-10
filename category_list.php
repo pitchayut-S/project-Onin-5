@@ -103,7 +103,8 @@ $products = [];
             <div class="nav-left">
                 <i class="fa-solid fa-bars"></i>
             </div>
-            <div class="nav-right">
+            <div class="nav-right"> 
+                <!-- แก้ไข -->
                 <img src="img/profile.png" alt="Profile">
             </div>
         </div>
