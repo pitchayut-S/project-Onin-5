@@ -80,8 +80,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
             <li><a href="stock_in.php" class="active"><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
             <li><a href="stock_out.php" ><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
+            <li><a href="stock_adjust.php" ><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
             <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-file-invoice"></i> <span class="menu-text">รายงาน</span></a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
+            <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
 
         <div class="sidebar-footer menu-list">
@@ -138,7 +140,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                                 echo "<td>" . $row['category'] . "</td>";
                                 echo "<td style='font-weight:bold; color:#356CB5;'>" . $row['quantity'] . " " . $row['unit'] . "</td>";
                                 echo "<td>
-                                        <button type='button' class='btn-add' style='padding:5px 15px; font-size:14px;' 
+                                        <button type='button' class='btnaction btn-in' style='padding:5px 15px; font-size:14px; border-radius:20px;' 
                                             onclick=\"openStockInModal('" . $row['id'] . "', '" . $row['name'] . "', '" . $row['product_code'] . "')\">
                                             <i class='fa-solid fa-plus-circle'></i> รับเข้า
                                         </button>

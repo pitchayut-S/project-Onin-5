@@ -86,12 +86,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         <ul class="menu-list">
             <li><a href="dashboard.php"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
             <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> ข้อมูลสินค้า</a></li>
+             <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
             <li><a href="stock_in.php"><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
             
             <li><a href="stock_out.php" class="active"><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
-            
+            <li><a href="stock_adjust.php"><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
+            <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
         <div class="sidebar-footer">
+            <li><a href="#"><i class="fa-solid fa-user-gear"></i> <span class="menu-text">การจัดการบัญชี</span></a></li>
             <li><a href="#" onclick="confirmLogout(); return false;" class="btn-logout"><i class="fa-solid fa-power-off"></i> ออกจากระบบ</a></li>
         </div>
     </nav>

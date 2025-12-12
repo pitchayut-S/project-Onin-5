@@ -825,6 +825,7 @@ th {
 /* เพิ่มปุ่ม Action สีเขียว (สำหรับกดรับเข้าในตาราง) */
 .btn-in {
     background-color: #1DA828;
+    color: white;
 }
 
 /* สีเขียวเดียวกับ Card */
@@ -840,3 +841,81 @@ th {
 .btn-out:hover {
     background-color: #e88200;
 }
+
+/* ปุ่มสำหรับปรับปรุงยอดสต็อก (สีม่วง) */
+.btn-adjust { 
+    background-color: #7209B7; 
+    color: white;
+}
+.btn-adjust:hover { 
+    background-color: #560bad; 
+}
+
+/* สีสำหรับแสดงผลต่าง (ใน Modal) */
+.diff-plus { color: #28a745; font-weight: bold; } /* สีเขียว (ของเกิน) */
+.diff-minus { color: #dc3545; font-weight: bold; } /* สีแดง (ของหาย) */
+
+/* =========================================
+   10. Report & Print Styles
+   ========================================= */
+/* ปุ่มพิมพ์รายงาน (สีเทาเข้ม) */
+.btn-print {
+    background-color: #343a40;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+}
+.btn-print:hover { background-color: #23272b; }
+
+/* ตั้งค่าเมื่อสั่ง Print (ซ่อนส่วนที่ไม่จำเป็น) */
+@media print {
+    @page { size: A4; margin: 1cm; }
+    
+    /* ซ่อน Sidebar, Navbar, ปุ่มต่างๆ, และช่องค้นหา */
+    .sidebar, .top-navbar, .search-box, .btn-print, .btn-action, .sidebar-footer {
+        display: none !important;
+    }
+
+    /* ขยายเนื้อหาให้เต็มหน้ากระดาษ */
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    .content-container {
+        padding: 0 !important;
+    }
+
+    /* ปรับแต่งตารางให้สวยงามในกระดาษ */
+    table {
+        border: 1px solid #ccc;
+        width: 100%;
+    }
+    th, td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        font-size: 12pt;
+    }
+    
+    /* แสดงสีพื้นหลังตอนพิมพ์ด้วย (เช่น แถบหัวตาราง) */
+    body { -webkit-print-color-adjust: exact; }
+}
+/* ป้ายสถานะ (Badge) ในตารางประวัติ */
+.badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    display: inline-block;
+    min-width: 80px;
+    text-align: center;
+}
+.bg-in { background-color: #28a745; } /* สีเขียว (รับเข้า) */
+.bg-out { background-color: #F48C06; } /* สีส้ม (เบิกออก) */
