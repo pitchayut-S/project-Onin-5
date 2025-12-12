@@ -9,118 +9,179 @@ if (!isset($_SESSION['username'])) {
 }
 
 $search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
-$products = [];
 
-// $base_sql = "SELECT id, product_code, name, category, unit, selling_price, quantity FROM products";
-// $order_by = " ORDER BY id DESC";
+// Query ประเภทสินค้า
+$sql = "SELECT id, category_name, prefix FROM product_category";
 
-// if ($search_text !== "") {
-//     $like = "%" . $search_text . "%";
-//     $stmt = $conn->prepare($base_sql . " WHERE product_code LIKE ? OR name LIKE ? OR category LIKE ?" . $order_by);
-//     $stmt->bind_param("sss", $like, $like, $like);
-//     $stmt->execute();
-//     $products = $stmt->get_result();
-//     $stmt->close();
-// } else {
-//     $products = $conn->query($base_sql . $order_by);
-// }
+if ($search_text !== "") {
+    $like = "%".$search_text."%";
+    $sql .= " WHERE category_name LIKE '$like' OR prefix LIKE '$like'";
+}
+
+$sql .= " ORDER BY id DESC";
+
+$categories = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สินค้า - Onin Shop Stock</title>
+    <title>ประเภทสินค้า - Onin Shop Stock</title>
+
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* กล่องค้นหา + ตาราง */
-        .content-container { padding: 30px; }
-        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; color: #333; }
+        .content-container { padding: 30px; font-family: "Prompt"; }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
+
+        /* Search Box */
         .search-box {
             background: #fff;
             padding: 18px 20px;
-            border-radius: 10px;
+            border-radius: 14px;
             display: flex;
             gap: 10px;
             align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-            margin-bottom: 16px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
         }
         .search-box input {
             flex: 1;
             border: none;
             background: #eef2f6;
             padding: 12px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
-        }
-        .btn-search,
-        .btn-reset {
-            border: none;
-            cursor: pointer;
-            border-radius: 8px;
-            padding: 11px 18px;
-            font-weight: 600;
-            font-size: 14px;
-        }
-        .btn-search { background: #356CB5; color: #fff; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-search:hover { background: #285291; }
-        .btn-reset { background: #e7ebf0; color: #333; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-reset:hover { background: #d8dde4; }
-        .table-container {
-            background: #fff;
             border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-            overflow-x: auto;
+            font-size: 14px;
         }
-        table { width: 100%; border-collapse: collapse; min-width: 720px; }
-        th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #eef1f4; }
-        th { background: #f3f6fb; color: #333; font-weight: 600; }
-        tr:hover td { background: #f9fbff; }
-        .badge {
-            display: inline-block;
-            padding: 6px 10px;
-            border-radius: 12px;
-            background: #e7f1ff;
-            color: #356CB5;
-            font-weight: 600;
-            font-size: 12px;
+
+        .btn-search {
+            background:#356CB5;
+            color:white;
+            padding:10px 18px;
+            border-radius:10px;
+            border:none;
+            cursor:pointer;
+            font-weight:600;
         }
-        .stock-ok { color: #1b9c5a; background: #e6f6ed; }
-        .stock-low { color: #c0392b; background: #fdecea; }
+        .btn-reset {
+            background:#e7ebf0;
+            padding:10px 16px;
+            border-radius:10px;
+            text-decoration:none;
+            color:#333;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            background:#fff;
+            border-radius: 14px;
+            overflow: hidden;
+            min-width: 700px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+        }
+
+        th, td {
+            padding:14px 12px;
+            border-bottom:1px solid #eee;
+        }
+        th { background:#f3f6fb; font-weight:600; }
+        tr:last-child td { border-bottom: none; }
+
+        /* Buttons */
+        .btn-add {
+            background:#28a745;
+            color:white;
+            padding:10px 18px;
+            border-radius:10px;
+            text-decoration:none;
+            font-weight:600;
+        }
+        .btn-edit {
+            background:#f1c40f;
+            padding:6px 12px;
+            border-radius:8px;
+            color:white;
+            text-decoration:none;
+        }
+        .btn-delete {
+            background:#e74c3c;
+            padding:6px 12px;
+            border-radius:8px;
+            color:white;
+            text-decoration:none;
+        }
     </style>
 </head>
+
 <body>
-    <?php include "sidebar.php"; ?>
-    <div class="main-content">
-        <div class="top-navbar">
-            <div class="nav-left">
-                <i class="fa-solid fa-bars"></i>
-            </div>
-            <div class="nav-right"> 
-                <!-- แก้ไข -->
-                <img src="img/profile.png" alt="Profile">
-            </div>
-        </div>
 
-        <div class="content-container">
-            <div class="page-title">ข้อมูลประเภทสินค้า</div>
+<?php include "sidebar.php"; ?>
 
-            <form class="search-box" method="get" action="product.php">
-                <input type="text" name="search" placeholder="พิมพ์เพื่อค้นหาสินค้า (รหัส / ชื่อ / ประเภท)" value="<?= htmlspecialchars($search_text, ENT_QUOTES, 'UTF-8') ?>">
-                <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา</button>
-                <?php if ($search_text !== ""): ?>
-                    <a class="btn-reset" href="product.php"><i class="fa-solid fa-rotate-left"></i> ล้างการค้นหา</a>
-                <?php endif; ?>
-            </form>
+<div class="main-content">
 
-        </div>
+    <div class="top-navbar">
+        <div class="nav-left"><i class="fa-solid fa-bars"></i></div>
+        <div class="nav-right"><img src="img/profile.png"></div>
     </div>
+
+    <div class="content-container">
+
+        <div class="page-title">ข้อมูลประเภทสินค้า</div>
+
+        <!-- ปุ่มเพิ่ม -->
+        <div style="text-align:right; margin-bottom:20px;">
+            <a href="category_add.php" class="btn-add">+ เพิ่มประเภทสินค้า</a>
+        </div>
+
+        <!-- Search -->
+        <form class="search-box" method="get" action="category_list.php">
+            <input type="text" name="search" placeholder="ค้นหาชื่อประเภทสินค้า / Prefix"
+                   value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+            <button type="submit" class="btn-search">ค้นหา</button>
+
+            <?php if ($search_text !== ""): ?>
+                <a href="category_list.php" class="btn-reset">ล้าง</a>
+            <?php endif; ?>
+        </form>
+
+        <!-- ตาราง -->
+        <table>
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>รหัสย่อสินค้า</th>
+                    <th>ชื่อประเภทสินค้า</th>
+                    <th>จัดการ</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <?php if ($categories->num_rows > 0): ?>
+                    <?php $i = 1; while ($row = $categories->fetch_assoc()): ?>
+                    <tr>
+                        <td><?= $i++ ?></td>
+                        <td><?= $row['prefix'] ?></td>
+                        <td><?= $row['category_name'] ?></td>
+                        <td>
+                            <a href="category_edit.php?id=<?= $row['id'] ?>" class="btn-edit">แก้ไข</a>
+                            <a href="category_delete.php?id=<?= $row['id'] ?>" class="btn-delete"
+                               onclick="return confirm('ต้องการลบประเภทสินค้านี้หรือไม่?');">ลบ</a>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
+                <?php else: ?>
+                    <tr><td colspan="4" style="text-align:center; padding:20px;">ไม่มีข้อมูลประเภทสินค้า</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+    </div>
+</div>
+
 </body>
 </html>

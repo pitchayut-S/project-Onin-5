@@ -19,7 +19,7 @@ $menu_config = [
     [
         'name' => 'สต๊อกสินค้า',
         'icon' => 'fa-solid fa-cart-shopping',
-        'link' => 'ProductStock.php',
+        'link' => 'product_Stock.php',
     ],
     [
         'name' => 'สินค้ายอดนิยม',

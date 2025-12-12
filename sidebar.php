@@ -5,6 +5,7 @@ if (!isset($menu_config)) {
 
 $current_page = basename(path: $_SERVER['PHP_SELF']);
 require_once __DIR__ . '/components/alert.php';
+
 ?>
 
 <nav class="sidebar">

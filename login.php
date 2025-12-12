@@ -32,7 +32,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <script>
                         Swal.fire({
                             icon: 'success',
-                            title: 'Login successful',
+                            title: 'เข้าสู่ระบบสําเร็จ',
                             showConfirmButton: false,
                             timer: 1500
                         }).then(() => {
