@@ -8,32 +8,46 @@ if (!isset($_SESSION['username'])) {
 }
 
 // --- Logic PHP: บันทึกการเบิกออก ---
+// --- แก้ไข Logic PHP: บันทึกเบิกออกแบบ Transaction ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'stock_out') {
     $product_id = $_POST['product_id'];
     $qty_out = intval($_POST['quantity']);
-    $note = $_POST['note']; // สาเหตุการเบิก
-
-    // 1. เช็คก่อนว่ามีของพอให้ตัดไหม?
-    $check_sql = "SELECT quantity FROM products WHERE id = $product_id";
-    $check_result = mysqli_query($conn, $check_sql);
-    $row = mysqli_fetch_assoc($check_result);
-    $current_qty = $row['quantity'];
+    $note = $_POST['note'];
 
     if ($qty_out > 0) {
-        if ($current_qty >= $qty_out) {
-            // ของพอ -> ตัดสต็อก (-)
-            $sql_update = "UPDATE products SET quantity = quantity - $qty_out WHERE id = $product_id";
-            mysqli_query($conn, $sql_update);
+        // เริ่มต้น Transaction
+        mysqli_begin_transaction($conn);
 
-            // บันทึกประวัติ (Transaction type = 'out')
-            $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
-                        VALUES ('$product_id', 'out', '$qty_out', '$note')";
-            mysqli_query($conn, $sql_log);
+        try {
+            // 1. ล็อกแถวข้อมูลเพื่อเช็คจำนวนล่าสุดก่อน (กันคนแย่งกันตัด)
+            $check_sql = "SELECT quantity FROM products WHERE id = $product_id FOR UPDATE";
+            $check_result = mysqli_query($conn, $check_sql);
+            $row = mysqli_fetch_assoc($check_result);
+            $current_qty = $row['quantity'];
 
-            echo "<script>alert('เบิกสินค้าเรียบร้อยแล้ว!'); window.location='stock_out.php';</script>";
-        } else {
-            // ของไม่พอ
-            echo "<script>alert('ทำรายการไม่สำเร็จ! สินค้าในสต็อกมีไม่พอ (คงเหลือ $current_qty)'); window.location='stock_out.php';</script>";
+            if ($current_qty >= $qty_out) {
+                // 2. ตัดสต็อก (-)
+                $sql_update = "UPDATE products SET quantity = quantity - $qty_out WHERE id = $product_id";
+                if (!mysqli_query($conn, $sql_update)) {
+                    throw new Exception("Error Updating Stock");
+                }
+
+                // 3. บันทึกประวัติ
+                $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
+                            VALUES ('$product_id', 'out', '$qty_out', '$note')";
+                if (!mysqli_query($conn, $sql_log)) {
+                    throw new Exception("Error Logging");
+                }
+
+                mysqli_commit($conn);
+                echo "<script>alert('เบิกสินค้าเรียบร้อยแล้ว!'); window.location='stock_out.php';</script>";
+            } else {
+                // ของไม่พอ ยกเลิก Transaction
+                throw new Exception("สินค้าในสต็อกมีไม่พอ (คงเหลือ $current_qty)");
+            }
+        } catch (Exception $e) {
+            mysqli_rollback($conn);
+            echo "<script>alert('ทำรายการไม่สำเร็จ: " . $e->getMessage() . "'); window.location='stock_out.php';</script>";
         }
     } else {
         echo "<script>alert('กรุณาระบุจำนวนที่ถูกต้อง');</script>";

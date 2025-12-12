@@ -10,36 +10,45 @@ $save_success = false;
 $no_change = false;
 
 // --- Logic PHP: บันทึกการปรับปรุงยอด ---
+// --- แก้ไข Logic PHP: ปรับปรุงยอดแบบ Transaction ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'adjust_stock') {
     $product_id = $_POST['product_id'];
-    $current_qty = intval($_POST['current_qty']); // จำนวนเดิมในระบบ
-    $actual_qty = intval($_POST['actual_qty']);   // จำนวนที่นับได้จริง
+    $actual_qty = intval($_POST['actual_qty']);
     $note = $_POST['note'];
 
-    // คำนวณส่วนต่าง
-    $diff = $actual_qty - $current_qty;
+    // ดึงค่าปัจจุบันมาเทียบใน Transaction เพื่อความชัวร์
+    mysqli_begin_transaction($conn);
+    try {
+        $check_sql = "SELECT quantity FROM products WHERE id = $product_id FOR UPDATE";
+        $check_result = mysqli_query($conn, $check_sql);
+        $row = mysqli_fetch_assoc($check_result);
+        $current_qty = $row['quantity'];
 
-    if ($diff != 0) {
-        // 1. อัปเดตสต็อกให้เท่ากับจำนวนที่นับได้จริง
-        $sql_update = "UPDATE products SET quantity = $actual_qty WHERE id = $product_id";
-        mysqli_query($conn, $sql_update);
+        $diff = $actual_qty - $current_qty;
 
-        // 2. บันทึกประวัติ
-        // ถ้าผลต่างเป็นบวก (+) คือของเกิน -> บันทึกเป็น in
-        // ถ้าผลต่างเป็นลบ (-) คือของหาย -> บันทึกเป็น out
-        $type = ($diff > 0) ? 'in' : 'out';
-        $qty_log = abs($diff); // เอาค่าสัมบูรณ์ (ตัดเครื่องหมายลบออกเวลาบันทึกจำนวน)
-        
-        // สร้างข้อความอัตโนมัติ (เช่น "ปรับยอด: -2 (ของหาย)")
-        $system_note = "ปรับปรุงสต็อก (" . ($diff > 0 ? "+" : "") . "$diff) : $note";
+        if ($diff != 0) {
+            // 1. อัปเดตสต็อก
+            $sql_update = "UPDATE products SET quantity = $actual_qty WHERE id = $product_id";
+            if (!mysqli_query($conn, $sql_update)) throw new Exception("Error Update");
 
-        $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
-                    VALUES ('$product_id', '$type', '$qty_log', '$system_note')";
-        mysqli_query($conn, $sql_log);
+            // 2. บันทึกประวัติ
+            $type = ($diff > 0) ? 'in' : 'out';
+            $qty_log = abs($diff); 
+            $system_note = "ปรับปรุงสต็อก (" . ($diff > 0 ? "+" : "") . "$diff) : $note";
 
-        $save_success = true;
-    } else {
-        $no_change = true;
+            $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
+                        VALUES ('$product_id', '$type', '$qty_log', '$system_note')";
+            if (!mysqli_query($conn, $sql_log)) throw new Exception("Error Log");
+
+            $save_success = true; // ให้ JS แสดง Modal Success
+            mysqli_commit($conn);
+        } else {
+            $no_change = true; // ให้ JS แสดง Modal No Change
+            mysqli_commit($conn); // ไม่มีอะไรแก้ แต่ต้องจบ transaction
+        }
+    } catch (Exception $e) {
+        mysqli_rollback($conn);
+        echo "<script>alert('เกิดข้อผิดพลาด: " . $e->getMessage() . "');</script>";
     }
 }
 ?>

@@ -1,26 +1,25 @@
 <?php
 session_start();
-require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
+require_once "db.php";
 
-// ตรวจสอบการส่งค่าจากฟอร์ม
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
-    // ------------------- ส่วน Login -------------------
+    // ------------------- ส่วน Login (Secure) -------------------
     if (isset($_POST['action']) && $_POST['action'] == 'login') {
-        $username = mysqli_real_escape_string($conn, $_POST['username']);
-        $password = $_POST['password'] ?? ''; // รหัสผ่านที่กรอกมา
+        $username = $_POST['username'];
+        $password = $_POST['password'];
 
-        // ดึงข้อมูล User จากฐานข้อมูล
-        $sql = "SELECT * FROM users WHERE username = '$username'";
-        $result = mysqli_query($conn, $sql);
+        // ใช้ Prepared Statement แทนการต่อ String
+        $stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE username = ?");
+        mysqli_stmt_bind_param($stmt, "s", $username); // s = string
+        mysqli_stmt_execute($stmt);
+        $result = mysqli_stmt_get_result($stmt);
 
         if (mysqli_num_rows($result) == 1) {
             $row = mysqli_fetch_assoc($result);
-            // ตรวจสอบรหัสผ่าน (เทียบรหัสที่กรอก กับ Hash ในฐานข้อมูล)
             if (password_verify($password, $row['password'])) {
-                // ล็อกอินสำเร็จ
                 $_SESSION['userid'] = $row['id'];
-                $_SESSION['username'] = $row['fullname']; // เก็บชื่อจริงไปแสดง
+                $_SESSION['username'] = $row['fullname'];
                 header("Location: dashboard.php");
                 exit();
             } else {
@@ -29,41 +28,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         } else {
             echo "<script>alert('ไม่พบชื่อผู้ใช้งานนี้ในระบบ');</script>";
         }
+        mysqli_stmt_close($stmt);
     } 
     
-    // ------------------- ส่วน Register -------------------
+    // ------------------- ส่วน Register (Secure) -------------------
     elseif (isset($_POST['action']) && $_POST['action'] == 'register') {
-        $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
-        $phone = mysqli_real_escape_string($conn, $_POST['phone']);
-        $username = mysqli_real_escape_string($conn, $_POST['username']);
-        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $fullname = $_POST['fullname'];
+        $phone = $_POST['phone'];
+        $username = $_POST['username'];
+        $email = $_POST['email'];
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
 
-        // เช็คว่ารหัสผ่านตรงกันไหม
         if ($password !== $confirm_password) {
             echo "<script>alert('รหัสผ่านยืนยันไม่ตรงกัน');</script>";
         } else {
-            // เช็คว่า Username ซ้ำไหม
-            $check_user = "SELECT * FROM users WHERE username = '$username'";
-            $query_check = mysqli_query($conn, $check_user);
+            // เช็ค Username ซ้ำ
+            $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE username = ?");
+            mysqli_stmt_bind_param($stmt, "s", $username);
+            mysqli_stmt_execute($stmt);
+            mysqli_stmt_store_result($stmt);
 
-            if (mysqli_num_rows($query_check) > 0) {
-                echo "<script>alert('ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาเปลี่ยนใหม่');</script>";
+            if (mysqli_stmt_num_rows($stmt) > 0) {
+                echo "<script>alert('ชื่อผู้ใช้นี้มีคนใช้แล้ว');</script>";
             } else {
-                // เข้ารหัส Password เพื่อความปลอดภัย (Hash)
+                mysqli_stmt_close($stmt); // ปิดอันเก่าก่อน
+
                 $password_hashed = password_hash($password, PASSWORD_DEFAULT);
+                
+                // บันทึกข้อมูลแบบปลอดภัย
+                $sql = "INSERT INTO users (fullname, phone, username, password, email) VALUES (?, ?, ?, ?, ?)";
+                $stmt = mysqli_prepare($conn, $sql);
+                mysqli_stmt_bind_param($stmt, "sssss", $fullname, $phone, $username, $password_hashed, $email);
 
-                // บันทึกลงฐานข้อมูล
-                $sql = "INSERT INTO users (fullname, phone, username, password, email) 
-                        VALUES ('$fullname', '$phone', '$username', '$password_hashed', '$email')";
-
-                if (mysqli_query($conn, $sql)) {
+                if (mysqli_stmt_execute($stmt)) {
                     echo "<script>alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');</script>";
                 } else {
                     echo "<script>alert('เกิดข้อผิดพลาด: " . mysqli_error($conn) . "');</script>";
                 }
             }
+            mysqli_stmt_close($stmt);
         }
     }
 }

@@ -7,23 +7,39 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
-// --- ส่วนบันทึกการรับเข้าสินค้า ---
+// --- แก้ไข Logic PHP: บันทึกรับเข้าแบบ Transaction ---
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] == 'stock_in') {
     $product_id = $_POST['product_id'];
-    $qty_in = intval($_POST['quantity']); // จำนวนที่รับเข้า
-    $note = $_POST['note']; // หมายเหตุ (เช่น รับจากใคร)
+    $qty_in = intval($_POST['quantity']);
+    $note = $_POST['note'];
     
     if ($qty_in > 0) {
-        // 1. อัปเดตจำนวนสินค้าในตาราง products (บวกเพิ่ม)
-        $sql_update = "UPDATE products SET quantity = quantity + $qty_in WHERE id = $product_id";
-        mysqli_query($conn, $sql_update);
+        // เริ่มต้น Transaction
+        mysqli_begin_transaction($conn);
 
-        // 2. บันทึกลงตารางประวัติ (stock_transactions)
-        $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
-                    VALUES ('$product_id', 'in', '$qty_in', '$note')";
-        mysqli_query($conn, $sql_log);
+        try {
+            // 1. อัปเดตสต็อก (+)
+            $sql_update = "UPDATE products SET quantity = quantity + $qty_in WHERE id = $product_id";
+            if (!mysqli_query($conn, $sql_update)) {
+                throw new Exception("Error Updating Product: " . mysqli_error($conn));
+            }
 
-        echo "<script>alert('รับเข้าสินค้าจำนวน $qty_in ชิ้น เรียบร้อยแล้ว!'); window.location='stock_in.php';</script>";
+            // 2. บันทึกประวัติ
+            $sql_log = "INSERT INTO stock_transactions (product_id, transaction_type, quantity, note) 
+                        VALUES ('$product_id', 'in', '$qty_in', '$note')";
+            if (!mysqli_query($conn, $sql_log)) {
+                throw new Exception("Error Logging: " . mysqli_error($conn));
+            }
+
+            // ถ้าทุกอย่างผ่าน ให้ยืนยันการบันทึก (Commit)
+            mysqli_commit($conn);
+            echo "<script>alert('รับเข้าสินค้าเรียบร้อย!'); window.location='stock_in.php';</script>";
+
+        } catch (Exception $e) {
+            // ถ้ามีอะไรผิดพลาด ให้ยกเลิกทั้งหมด (Rollback)
+            mysqli_rollback($conn);
+            echo "<script>alert('เกิดข้อผิดพลาด! ข้อมูลไม่ถูกบันทึก (" . $e->getMessage() . ")');</script>";
+        }
     } else {
         echo "<script>alert('กรุณาระบุจำนวนที่ถูกต้อง');</script>";
     }

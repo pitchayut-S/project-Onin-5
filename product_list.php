@@ -36,15 +36,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     // สร้างโฟลเดอร์ uploads ถ้ายังไม่มี
     if (!file_exists('uploads')) { mkdir('uploads', 0777, true); }
 
-    // SQL Insert
+   // SQL Insert แบบ Secure
     $sql = "INSERT INTO products (product_code, name, category, unit, cost_price, selling_price, mfg_date, expiry_date, quantity, image) 
-            VALUES ('$code', '$name', '$category', '$unit', '$cost', '$price', '$mfg', '$exp', '$qty', '$image_name')";
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    if (mysqli_query($conn, $sql)) {
-        $save_success = true; // ตั้งค่าเป็น true เพื่อให้ JS ทำงาน
+    $stmt = mysqli_prepare($conn, $sql);
+    // "ssssddssis" คือชนิดตัวแปร: s=string, d=decimal(ทศนิยม), i=integer(จำนวนเต็ม)
+    mysqli_stmt_bind_param($stmt, "ssssddssis", $code, $name, $category, $unit, $cost, $price, $mfg, $exp, $qty, $image_name);
+
+    if (mysqli_stmt_execute($stmt)) {
+        $save_success = true;
     } else {
         echo "<script>alert('Error: " . mysqli_error($conn) . "');</script>";
     }
+    mysqli_stmt_close($stmt);
 }
 
 // --- ส่วน PHP ลบข้อมูล (คงเดิม) ---
@@ -86,18 +91,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         // (Optional: ลบรูปเก่าทิ้งก็ได้ถ้าต้องการประหยัดพื้นที่)
     }
 
-    // SQL Update
+    // SQL Update แบบ Secure
     $sql = "UPDATE products SET 
-            product_code='$code', name='$name', category='$category', unit='$unit', 
-            cost_price='$cost', selling_price='$price', mfg_date='$mfg', expiry_date='$exp', 
-            quantity='$qty', image='$image_name' 
-            WHERE id=$id";
+            product_code=?, name=?, category=?, unit=?, cost_price=?, selling_price=?, 
+            mfg_date=?, expiry_date=?, quantity=?, image=? 
+            WHERE id=?";
 
-    if (mysqli_query($conn, $sql)) {
+    $stmt = mysqli_prepare($conn, $sql);
+    // สังเกตว่ามี "i" (id) เพิ่มมาตอนท้าย
+    mysqli_stmt_bind_param($stmt, "ssssddssisi", $code, $name, $category, $unit, $cost, $price, $mfg, $exp, $qty, $image_name, $id);
+
+    if (mysqli_stmt_execute($stmt)) {
         echo "<script>alert('แก้ไขข้อมูลสำเร็จ!'); window.location='product_list.php';</script>";
-    } else {
-        echo "<script>alert('Error: " . mysqli_error($conn) . "');</script>";
     }
+    mysqli_stmt_close($stmt);
 }
 ?>
 
@@ -292,10 +299,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         <div class="content-container">
             <h2 class="page-title">ข้อมูลสินค้า</h2>
 
-            <div class="search-box">
-                <input type="text" class="search-input" placeholder="ค้นหาสินค้า...">
-                <button class="btn-search">ค้นหา</button>
-            </div>
+           <form method="GET" class="search-box">
+                <input type="text" 
+                    name="search" 
+                    class="search-input" 
+                    placeholder="ค้นหาสินค้า..." 
+                    value="<?php echo isset($_GET['search']) ? htmlspecialchars($_GET['search']) : ''; ?>">
+                
+                <button type="submit" class="btn-search">ค้นหา</button>
+            </form>
 
             <div class="table-container">
                 <table>
@@ -312,28 +324,71 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                     </thead>
                     <tbody>
                         <?php
-                        $search_q = isset($_GET['search']) ? $_GET['search'] : '';
-                        $sql = "SELECT * FROM products WHERE name LIKE '%$search_q%' OR product_code LIKE '%$search_q%'";
-                        $result = mysqli_query($conn, $sql);
+                        // รับค่าค้นหา
+                        $search = isset($_GET['search']) ? $_GET['search'] : '';
+                        
+                        // เตรียมตัวแปรผลลัพธ์
+                        $result = null;
 
-                        if (mysqli_num_rows($result) > 0) {
+                        // ตรวจสอบว่ามีการค้นหาหรือไม่
+                        if (!empty($search)) {
+                            // กรณีมีคำค้นหา: ใช้ Prepared Statement เพื่อความปลอดภัย
+                            $sql = "SELECT * FROM products WHERE name LIKE ? OR product_code LIKE ?";
+                            $stmt = mysqli_prepare($conn, $sql);
+                            $search_param = "%" . $search . "%";
+                            mysqli_stmt_bind_param($stmt, "ss", $search_param, $search_param);
+                            mysqli_stmt_execute($stmt);
+                            $result = mysqli_stmt_get_result($stmt);
+                        } else {
+                            // กรณีไม่มีคำค้นหา: ดึงข้อมูลทั้งหมด
+                            $sql = "SELECT * FROM products";
+                            $result = mysqli_query($conn, $sql);
+                        }
+
+                        // แสดงผลลัพธ์
+                        if ($result && mysqli_num_rows($result) > 0) {
                             while($row = mysqli_fetch_assoc($result)) {
-                                $date_th = date("d/m/", strtotime($row['expiry_date'])) . (date("Y", strtotime($row['expiry_date'])) + 543);
+                                // แปลงวันที่
+                                $date_th = "-";
+                                if (!empty($row['expiry_date'])) {
+                                    $date_th = date("d/m/", strtotime($row['expiry_date'])) . (date("Y", strtotime($row['expiry_date'])) + 543);
+                                }
+                                
                                 echo "<tr>";
-                                echo "<td>" . $row['product_code'] . "</td>";
-                                echo "<td>" . ($row['image'] ? "<img src='uploads/" . $row['image'] . "' width='40' height='40' style='object-fit:contain;'>" : "<div style='width:40px; height:40px; background:#ddd;'></div>") . "</td>";
-                                echo "<td>" . $row['name'] . "</td>";
-                                echo "<td>" . $row['category'] . "</td>";
-                                echo "<td style='" . ($row['quantity'] == 0 ? 'color:red;' : '') . "'>" . $row['quantity'] . "</td>";
+                                echo "<td>" . htmlspecialchars($row['product_code']) . "</td>";
+                                
+                                // แสดงรูปภาพ
+                                if ($row['image'] && file_exists("uploads/" . $row['image'])) {
+                                    echo "<td><img src='uploads/" . htmlspecialchars($row['image']) . "' width='40' height='40' style='object-fit:contain;'></td>";
+                                } else {
+                                    echo "<td><div style='width:40px; height:40px; background:#ddd; border-radius:4px;'></div></td>";
+                                }
+                                
+                                echo "<td>" . htmlspecialchars($row['name']) . "</td>";
+                                echo "<td>" . htmlspecialchars($row['category']) . "</td>";
+                                
+                                // เช็คจำนวนคงเหลือ (สีแดงถ้าหมด)
+                                $qty_style = ($row['quantity'] == 0) ? 'color:red; font-weight:bold;' : '';
+                                echo "<td style='$qty_style'>" . number_format($row['quantity']) . " " . htmlspecialchars($row['unit']) . "</td>";
+                                
                                 echo "<td>" . $date_th . "</td>";
                                 echo "<td>
-                                        <button class='btn-action btn-edit' onclick=\"openEditModal(" . $row['id'] . ")\"><i class='fa-solid fa-pen-to-square'></i> Edit</button>
-                                        <button type=\"button\" class=\"btn-action btn-delete\" onclick=\"openDeleteModal(" . $row['id'] . ")\"><i class=\"fa-solid fa-trash\"></i> Delete</button>
-                                      </td>";
+                                        <button type='button' class='btn-action btn-edit' onclick=\"openEditModal(" . $row['id'] . ")\">
+                                            <i class='fa-solid fa-pen-to-square'></i> Edit
+                                        </button>
+                                        <button type='button' class='btn-action btn-delete' onclick=\"openDeleteModal(" . $row['id'] . ")\">
+                                            <i class='fa-solid fa-trash'></i> Delete
+                                        </button>
+                                    </td>";
                                 echo "</tr>";
                             }
                         } else {
-                            echo "<tr><td colspan='7' style='text-align:center;'>ไม่พบข้อมูล</td></tr>";
+                            echo "<tr><td colspan='7' style='text-align:center;'>ไม่พบข้อมูลสินค้า</td></tr>";
+                        }
+                        
+                        // ปิด Statement ถ้ามีการใช้งาน (เพื่อคืนทรัพยากรระบบ)
+                        if (isset($stmt) && $stmt) {
+                            mysqli_stmt_close($stmt);
                         }
                         ?>
                     </tbody>
