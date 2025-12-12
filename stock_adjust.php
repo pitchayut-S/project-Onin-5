@@ -69,8 +69,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
             <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
             <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
-        <div class="sidebar-footer">
-            <li><a href="#" onclick="confirmLogout(); return false;" class="btn-logout"><i class="fa-solid fa-power-off"></i> ออกจากระบบ</a></li>
+        <div class="sidebar-footer menu-list">
+            <li><a href="#"><i class="fa-solid fa-user-gear"></i> <span class="menu-text">การจัดการบัญชี</span></a></li>
+            <li><a href="index.php" class="btn-logout" onclick="confirmLogout(); return false;">
+                <i class="fa-solid fa-power-off"></i> <span class="menu-text">ออกจากระบบ</span></a></li>
         </div>
     </nav>
 

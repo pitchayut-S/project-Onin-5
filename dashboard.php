@@ -1,13 +1,54 @@
 <?php
 session_start();
+require_once "db.php"; // เรียกไฟล์เชื่อมต่อฐานข้อมูล
 
-// ตรวจสอบว่าล็อกอินหรือยัง (ถ้ายังไม่ล็อกอินให้เด้งกลับไปหน้า index)
-// หมายเหตุ: คุณต้อง set $_SESSION['username'] ในหน้า index.php ตอนล็อกอินสำเร็จก่อนหน้านี้ด้วยนะครับ
+// ตรวจสอบ Login
 if (!isset($_SESSION['username'])) {
-    // ถ้ายังไม่ได้เขียนระบบ Session จริงจัง ให้ comment บรรทัดข้างล่างนี้ไว้ก่อนได้ครับ
-    // header("Location: index.php"); 
-    // exit();
+    header("Location: index.php");
+    exit();
 }
+
+// --- 1. หาผลรวมสินค้า (นับจำนวนรายการสินค้าทั้งหมด) ---
+$sql1 = "SELECT COUNT(*) as total_items FROM products";
+$result1 = mysqli_query($conn, $sql1);
+$row1 = mysqli_fetch_assoc($result1);
+$total_items = $row1['total_items'];
+
+// --- 2. หาสินค้าคงเหลือ (ผลรวมจำนวนชิ้นทั้งหมด) ---
+$sql2 = "SELECT SUM(quantity) as total_qty FROM products";
+$result2 = mysqli_query($conn, $sql2);
+$row2 = mysqli_fetch_assoc($result2);
+$total_qty = $row2['total_qty'] ? $row2['total_qty'] : 0; // ถ้าไม่มีของให้เป็น 0
+
+// --- 3. หายอดขายทั้งหมด (ดึงจากประวัติการเบิกออก 'out') ---
+// สมมติ: เราจะคำนวณยอดขายคร่าวๆ จาก (จำนวนที่เบิกออก * ราคาขาย)
+// หมายเหตุ: Query นี้ซับซ้อนหน่อย เพราะต้อง join ตาราง products เพื่อเอาราคาขายมาคูณ
+$sql3 = "SELECT SUM(t.quantity * p.selling_price) as total_sales 
+         FROM stock_transactions t 
+         JOIN products p ON t.product_id = p.id 
+         WHERE t.transaction_type = 'out'";
+$result3 = mysqli_query($conn, $sql3);
+$row3 = mysqli_fetch_assoc($result3);
+$total_sales = $row3['total_sales'] ? $row3['total_sales'] : 0;
+
+// ยอดขายวันนี้ (เพิ่มเงื่อนไขวันที่)
+$sql3_today = "SELECT SUM(t.quantity * p.selling_price) as total_sales_today 
+               FROM stock_transactions t 
+               JOIN products p ON t.product_id = p.id 
+               WHERE t.transaction_type = 'out' AND DATE(t.created_at) = CURDATE()";
+$result3_today = mysqli_query($conn, $sql3_today);
+$row3_today = mysqli_fetch_assoc($result3_today);
+$total_sales_today = $row3_today['total_sales_today'] ? $row3_today['total_sales_today'] : 0;
+
+
+// --- 4. หาสินค้าค้างสต๊อก (สินค้าที่ไม่มีการเคลื่อนไหวมานาน หรือเหลือน้อยมาก) ---
+// ในที่นี้ขอปรับเป็น "สินค้าใกล้หมด" (Low Stock) แทน เพื่อให้มีประโยชน์กว่า
+// นับสินค้าที่เหลือน้อยกว่า 10 ชิ้น
+$sql4 = "SELECT COUNT(*) as low_stock_count FROM products WHERE quantity <= 10";
+$result4 = mysqli_query($conn, $sql4);
+$row4 = mysqli_fetch_assoc($result4);
+$low_stock_count = $row4['low_stock_count'];
+
 ?>
 
 <!DOCTYPE html>
@@ -254,42 +295,42 @@ if (!isset($_SESSION['username'])) {
                 
                 <div class="card card-blue">
                     <div class="card-body">
-                        <div class="card-title">ผลรวมสินค้า</div>
-                        <div class="card-value">จำนวน 50 สินค้า</div>
+                        <div class="card-title">รายการสินค้าทั้งหมด</div>
+                        <div class="card-value">จำนวน <?php echo number_format($total_items); ?> รายการ</div>
                     </div>
-                    <a href="#" class="card-footer">
-                        เพิ่มสินค้า <i class="fa-solid fa-chevron-right"></i>
+                    <a href="product_list.php" class="card-footer">
+                        ดูรายการสินค้า <i class="fa-solid fa-chevron-right"></i>
                     </a>
                 </div>
 
                 <div class="card card-yellow">
                     <div class="card-body">
-                        <div class="card-title">สินค้าคงเหลือ</div>
-                        <div class="card-value">จำนวน 40 ชิ้น</div>
+                        <div class="card-title">จำนวนชิ้นในคลัง</div>
+                        <div class="card-value">รวม <?php echo number_format($total_qty); ?> ชิ้น</div>
                     </div>
-                    <a href="#" class="card-footer">
-                        เช็คสินค้า <i class="fa-solid fa-chevron-right"></i>
+                    <a href="stock_adjust.php" class="card-footer">
+                        ตรวจนับสต็อก <i class="fa-solid fa-chevron-right"></i>
                     </a>
                 </div>
 
                 <div class="card card-green">
                     <div class="card-body">
-                        <div class="card-title">ยอดขายทั้งหมด</div>
-                        <div class="card-value">ทั้งหมด 1000.00 บาท</div>
-                        <div class="card-sub-value">วันนี้ 0.00 บาท</div>
+                        <div class="card-title">ยอดขายโดยประมาณ</div>
+                        <div class="card-value">รวม ฿<?php echo number_format($total_sales, 2); ?></div>
+                        <div class="card-sub-value">วันนี้ ฿<?php echo number_format($total_sales_today, 2); ?></div>
                     </div>
-                    <a href="#" class="card-footer">
-                        ดูเพิ่มเติม <i class="fa-solid fa-chevron-right"></i>
+                    <a href="stock_history.php?type=out" class="card-footer">
+                        ดูประวัติการขาย <i class="fa-solid fa-chevron-right"></i>
                     </a>
                 </div>
 
                 <div class="card card-red">
                     <div class="card-body">
-                        <div class="card-title">สินค้าค้างสต๊อก</div>
-                        <div class="card-value">จำนวน 10 ชิ้น</div>
+                        <div class="card-title">สินค้าใกล้หมด (< 10)</div>
+                        <div class="card-value">จำนวน <?php echo number_format($low_stock_count); ?> รายการ</div>
                     </div>
-                    <a href="#" class="card-footer">
-                        ดูเพิ่มเติม <i class="fa-solid fa-chevron-right"></i>
+                    <a href="report_low_stock.php" class="card-footer">
+                        ดูรายงาน <i class="fa-solid fa-chevron-right"></i>
                     </a>
                 </div>
 

@@ -34,17 +34,24 @@ $threshold = isset($_GET['min']) ? intval($_GET['min']) : 10;
             <li><a href="report_low_stock.php" class="active"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
             <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
-        <div class="sidebar-footer">
-            <li><a href="#" onclick="confirmLogout(); return false;" class="btn-logout"><i class="fa-solid fa-power-off"></i> ออกจากระบบ</a></li>
+        <div class="sidebar-footer menu-list">
+            <li><a href="#"><i class="fa-solid fa-user-gear"></i> <span class="menu-text">การจัดการบัญชี</span></a></li>
+            <li><a href="index.php" class="btn-logout" onclick="confirmLogout(); return false;">
+                <i class="fa-solid fa-power-off"></i> <span class="menu-text">ออกจากระบบ</span></a></li>
         </div>
     </nav>
 
     <div class="main-content">
         <div class="top-navbar">
-            <div class="nav-left"><i class="fa-solid fa-bars"></i></div>
+            <div class="nav-left">
+                <i class="fa-solid fa-bars"></i>
+            </div>
             <div class="nav-right">
-                <span style="font-weight:500; margin-right:10px;"><?php echo $_SESSION['username']; ?></span>
-                <img src="https://ui-avatars.com/api/?name=<?php echo $_SESSION['username']; ?>&background=0D8ABC&color=fff" width="40" style="border-radius:50%;">
+                <?php $user_display = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin'; ?>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-weight:500; color:#333;"><?php echo $user_display; ?></span>
+                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_display); ?>&background=0D8ABC&color=fff" alt="User Profile">
+                </div>
             </div>
         </div>
 
