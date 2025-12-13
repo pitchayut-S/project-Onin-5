@@ -3,9 +3,8 @@ if (!isset($menu_config)) {
     require_once __DIR__ . '/menu-sidebar.php';
 }
 
-$current_page = basename(path: $_SERVER['PHP_SELF']);
+$current_page = basename($_SERVER['PHP_SELF']);
 require_once __DIR__ . '/components/alert.php';
-
 ?>
 
 <nav class="sidebar">
