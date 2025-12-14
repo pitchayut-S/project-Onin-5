@@ -18,7 +18,7 @@ if (isset($_SESSION['role']) && strtolower($_SESSION['role']) == 'admin') {
 
 <div class="top-navbar">
     <div class="nav-left">
-        <i class="fa-solid fa-bars" id="sidebarToggle" style="cursor:pointer; font-size:20px; color:#555;"></i>
+        <!-- <i class="fa-solid fa-bars" id="sidebarToggle" style="cursor:pointer; font-size:20px; color:#555;"></i> -->
     </div>
     
     <div class="nav-right" style="display: flex; align-items: center; gap: 12px;">

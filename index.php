@@ -34,7 +34,7 @@ if (isset($_SESSION['username'])) {
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .btn-submit { background-color: #356CB5; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; width: 100%; }
         .link-switch { color: #356CB5; cursor: pointer; display:block; text-align:right; margin-bottom:10px; }
-        .btn-start { padding: 15px 30px; font-size: 20px; border-radius: 10px; border: 1px solid #ccc; cursor: pointer; background: white; color: #356CB5; font-weight: bold;}
+        .btn-start { padding: 15px 35px; font-size: 26px; border-radius: 10px; border: 1px solid #ffffff; cursor: pointer; background: white; color: #356CB5; font-weight: bold;}
 
         /*  ส่วนที่เพิ่ม: ปรับฟอนต์ SweetAlert2 ให้เป็น Prompt  */
         div:where(.swal2-container) .swal2-popup {
@@ -53,8 +53,8 @@ if (isset($_SESSION['username'])) {
 <body>
 
     <div class="main-content" style="text-align: center;">
-        <h1 style="color: #356CB5; font-size: 48px;">Onin Shop Stock</h1>
-        <p style="font-size: 24px; margin-bottom: 20px;">ระบบบริหารจัดการสต็อกร้านของชำ</p>
+        <h1 style="color: #356CB5; font-size: 65px;">Onin Shop Stock</h1>
+        <p style="font-size: 30px; margin-bottom: 20px;">ระบบบริหารจัดการสต็อกร้านของชำ</p>
         <button class="btn-start" onclick="openModal('login')">เริ่มต้นใช้งาน</button>
     </div>
 
