@@ -74,7 +74,7 @@ $res_recent = $conn->query($sql_recent);
 $sql_exp = "
     SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left 
     FROM products 
-    WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+    WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)111111111111
     ORDER BY exp_date ASC LIMIT 5
 ";
 $res_exp = $conn->query($sql_exp);
