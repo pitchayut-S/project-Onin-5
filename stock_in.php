@@ -43,6 +43,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     } else {
         echo "<script>alert('กรุณาระบุจำนวนที่ถูกต้อง');</script>";
     }
+
+    if (!isset($row)) {
+    $row = [
+        'name' => 'รอเลือกสินค้า...',
+        'product_code' => '-'
+    ];
+}
 }
 ?>
 
@@ -91,14 +98,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
    <nav class="sidebar">
         <div class="sidebar-header">Onin Shop Stock</div>
         <ul class="menu-list">
-            <li><a href="dashboard.php"><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="dashboard.php" ><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
             <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
-            <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
+            <li><a href="category_list.php"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
             <li><a href="stock_in.php" class="active"><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
             <li><a href="stock_out.php" ><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
             <li><a href="stock_adjust.php" ><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
             <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
-            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> <span class="menu-text">รายงานสินค้าใกล้หมด</span></a></li>
             <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
 
@@ -150,17 +157,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 
                         if (mysqli_num_rows($result) > 0) {
                             while($row = mysqli_fetch_assoc($result)) {
+
+                                $safe_name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+                                $safe_code = htmlspecialchars($row['product_code'], ENT_QUOTES, 'UTF-8');
                                 echo "<tr>";
-                                echo "<td>" . $row['product_code'] . "</td>";
-                                echo "<td>" . $row['name'] . "</td>";
+                                echo "<td>" . $safe_code . "</td>";
+                                echo "<td>" . $safe_name . "</td>";
                                 echo "<td>" . $row['category'] . "</td>";
                                 echo "<td style='font-weight:bold; color:#356CB5;'>" . $row['quantity'] . " " . $row['unit'] . "</td>";
                                 echo "<td>
-                                        <button type='button' class='btnaction btn-in' style='padding:5px 15px; font-size:14px; border-radius:20px;' 
-                                            onclick=\"openStockInModal('" . $row['id'] . "', '" . $row['name'] . "', '" . $row['product_code'] . "')\">
-                                            <i class='fa-solid fa-plus-circle'></i> รับเข้า
+                                        <button type='button' class='btn-action btn-in' 
+                                            data-id='" . $row['id'] . "'
+                                            data-name='" . $safe_name . "'
+                                            data-code='" . $safe_code . "'
+                                            onclick=\"openStockInModalFromButton(this)\">  <i class='fa-solid fa-plus'></i> รับเข้า
                                         </button>
-                                      </td>";
+                                    </td>";
                                 echo "</tr>";
                             }
                         } else {
@@ -177,8 +189,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         <div class="login-box" style="width: 500px;">
             <div class="header-text">
                 <h2 style="color:#356CB5;">บันทึกรับเข้าสินค้า</h2>
-                <p id="modal_product_name" style="font-size:18px; color:#333; margin-top:10px;">-</p>
-                <p id="modal_product_code" style="font-size:14px; color:#666;">-</p>
+                <p id="modal_product_name" style="font-size:18px; color:#333; margin-top:10px;"><?php echo $row['name'] ?? '-'; ?></p>
+                <p id="modal_product_code" style="font-size:14px; color:#666;"><?php echo $row['product_code'] ?? '-'; ?></p>
             </div>
 
             <form action="" method="POST">
@@ -204,7 +216,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     </div>
 
     <script>
-        function openStockInModal(id, name, code) {
+       function openStockInModalFromButton(btn) {
+        // ดึงค่าจาก data- attribute
+            var id = btn.getAttribute('data-id');
+            var name = btn.getAttribute('data-name');
+            var code = btn.getAttribute('data-code');
+
+            // ส่งต่อไปทำงานเหมือนเดิม
             document.getElementById('stock_product_id').value = id;
             document.getElementById('modal_product_name').innerText = name;
             document.getElementById('modal_product_code').innerText = "รหัส: " + code;

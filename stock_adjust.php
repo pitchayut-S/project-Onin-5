@@ -67,15 +67,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     <nav class="sidebar">
         <div class="sidebar-header">Onin Shop Stock</div>
         <ul class="menu-list">
-            <li><a href="dashboard.php"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
-            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> ข้อมูลสินค้า</a></li>
-            <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
-            <li><a href="stock_in.php"><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
-            <li><a href="stock_out.php"><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
-            
+            <li><a href="dashboard.php" ><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
+            <li><a href="category_list.php"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
+            <li><a href="stock_in.php" ><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
+            <li><a href="stock_out.php" ><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
             <li><a href="stock_adjust.php" class="active"><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
-            
-            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
+            <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> <span class="menu-text">รายงานสินค้าใกล้หมด</span></a></li>
             <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
         <div class="sidebar-footer menu-list">
@@ -126,17 +125,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 
                         if (mysqli_num_rows($result) > 0) {
                             while($row = mysqli_fetch_assoc($result)) {
+
+                                // 1. แปลงอักขระพิเศษให้ปลอดภัย (กัน ' และ ")
+                                $safe_name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+                                $safe_code = htmlspecialchars($row['product_code'], ENT_QUOTES, 'UTF-8');
+
                                 echo "<tr>";
                                 echo "<td>" . $row['product_code'] . "</td>";
-                                echo "<td>" . $row['name'] . "</td>";
+                                echo "<td>" . $row['name'] . "</td>"; // แสดงผลหน้าเว็บปกติ
                                 echo "<td>" . $row['category'] . "</td>";
                                 echo "<td style='font-weight:bold;'>" . $row['quantity'] . " " . $row['unit'] . "</td>";
                                 echo "<td>
                                         <button type='button' class='btn-action btn-adjust' 
-                                            onclick=\"openAdjustModal('" . $row['id'] . "', '" . $row['name'] . "', '" . $row['product_code'] . "', " . $row['quantity'] . ")\">
+                                            data-id='" . $row['id'] . "'
+                                            data-name='" . $safe_name . "'
+                                            data-code='" . $safe_code . "'
+                                            data-qty='" . $row['quantity'] . "'
+                                            onclick=\"openAdjustModalFromButton(this)\">
                                             <i class='fa-solid fa-pen-nib'></i> ปรับยอด
                                         </button>
-                                      </td>";
+                                    </td>";
                                 echo "</tr>";
                             }
                         } else {
@@ -157,9 +165,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                 <p id="modal_product_code" style="font-size:14px; color:#666;">-</p>
             </div>
 
-            <form action="" method="POST">
+            <form id="adjustForm" action="" method="POST" onsubmit="event.preventDefault(); openSummaryModal();">
                 <input type="hidden" name="action" value="adjust_stock">
+                
                 <input type="hidden" id="adjust_product_id" name="product_id">
+                
                 <input type="hidden" id="current_qty_hidden" name="current_qty">
 
                 <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap:15px; margin-bottom:15px;">
@@ -167,24 +177,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                         <label>จำนวนในระบบ</label>
                         <input type="text" id="display_current_qty" readonly style="background-color:#eee; text-align:center; font-weight:bold;">
                     </div>
-
                     <div class="form-group">
                         <label style="color:#7209B7;">นับได้จริง (Actual)</label>
                         <input type="number" id="input_actual_qty" name="actual_qty" required min="0" 
-                               style="text-align:center; font-size:18px; border:2px solid #7209B7;" 
-                               oninput="calculateDiff()">
-                    </div>
+                               style="text-align:center; font-size:18px; border:2px solid #7209B7;"
+                               oninput="calculateDiff()"> </div>
                 </div>
 
                 <div style="text-align:center; margin-bottom:20px; padding:10px; background-color:#f9f9f9; border-radius:8px;">
-                    <span style="font-size:14px; color:#666;">ผลต่าง (Variance):</span>
+                    <span style="font-size:14px; color:#666;">ผลต่าง:</span>
                     <span id="diff_display" style="font-size:24px; font-weight:bold; margin-left:10px;">0</span>
                     <div id="diff_desc" style="font-size:12px; margin-top:5px;">-</div>
                 </div>
 
                 <div class="form-group">
                     <label>หมายเหตุ / สาเหตุการปรับ</label>
-                    <input type="text" name="note" placeholder="เช่น นับสต็อกประจำเดือน, ของชำรุด, เจอของเกิน" required>
+                    <input type="text" id="input_note" name="note" placeholder="เช่น นับสต็อกประจำเดือน" required>
                 </div>
 
                 <div class="modal-footer" style="justify-content: center;">
@@ -216,21 +224,30 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 
     <script>
         // เปิด Modal
-        function openAdjustModal(id, name, code, currentQty) {
+        function openAdjustModalFromButton(btn) {
+            // 1. ดึงข้อมูลจากปุ่ม
+            var id = btn.getAttribute('data-id');
+            var name = btn.getAttribute('data-name');
+            var code = btn.getAttribute('data-code');
+            var currentQty = btn.getAttribute('data-qty');
+
+            // 2. เอาข้อมูลไปใส่ใน Modal
             document.getElementById('adjust_product_id').value = id;
             document.getElementById('modal_product_name').innerText = name;
             document.getElementById('modal_product_code').innerText = "รหัส: " + code;
             
-            // Set ค่าจำนวนปัจจุบัน
+            // 3. Set ค่าจำนวนปัจจุบัน
             document.getElementById('current_qty_hidden').value = currentQty;
             document.getElementById('display_current_qty').value = currentQty;
             
-            // Reset ค่า Input
+            // 4. Reset ค่า Input และผลต่าง (เคลียร์ค่าเก่าออก)
             document.getElementById('input_actual_qty').value = '';
+            document.getElementById('input_note').value = '';
             document.getElementById('diff_display').innerText = '0';
             document.getElementById('diff_display').className = '';
             document.getElementById('diff_desc').innerText = 'กรุณากรอกจำนวนที่นับได้จริง';
             
+            // 5. เปิด Modal
             document.getElementById('adjustModal').style.display = 'flex';
         }
 

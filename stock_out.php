@@ -98,14 +98,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     <nav class="sidebar">
         <div class="sidebar-header">Onin Shop Stock</div>
         <ul class="menu-list">
-            <li><a href="dashboard.php"><i class="fa-solid fa-chart-line"></i> Dashboard</a></li>
-            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> ข้อมูลสินค้า</a></li>
-             <li><a href="#"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
-            <li><a href="stock_in.php"><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
-            
+            <li><a href="dashboard.php" ><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
+            <li><a href="category_list.php"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
+            <li><a href="stock_in.php" ><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
             <li><a href="stock_out.php" class="active"><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
-            <li><a href="stock_adjust.php"><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
-            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> รายงานสินค้าใกล้หมด</a></li>
+            <li><a href="stock_adjust.php" ><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
+            <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> <span class="menu-text">รายงานสินค้าใกล้หมด</span></a></li>
             <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
         </ul>
        <div class="sidebar-footer menu-list">
@@ -155,31 +155,39 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
                         $result = mysqli_query($conn, $sql);
 
                         if (mysqli_num_rows($result) > 0) {
-                            while($row = mysqli_fetch_assoc($result)) {
-                                // ถ้าของหมด ให้แสดงตัวหนังสือแดง และปุ่มกดไม่ได้
-                                $is_out_of_stock = ($row['quantity'] <= 0);
-                                $qty_style = $is_out_of_stock ? "color:red; font-weight:bold;" : "color:#356CB5; font-weight:bold;";
-                                
-                                echo "<tr>";
-                                echo "<td>" . $row['product_code'] . "</td>";
-                                echo "<td>" . $row['name'] . "</td>";
-                                echo "<td>" . $row['category'] . "</td>";
-                                echo "<td style='$qty_style'>" . $row['quantity'] . " " . $row['unit'] . "</td>";
-                                echo "<td>";
-                                
-                                if (!$is_out_of_stock) {
-                                    // ปุ่มสีส้ม (btn-out)
-                                    echo "<button type='button' class='btn-action btn-out' 
-                                            onclick=\"openStockOutModal('" . $row['id'] . "', '" . $row['name'] . "', '" . $row['product_code'] . "', " . $row['quantity'] . ")\">
-                                            <i class='fa-solid fa-minus'></i> เบิกออก
-                                          </button>";
-                                } else {
-                                    echo "<span style='color:#999; font-size:12px;'>สินค้าหมด</span>";
-                                }
-                                
-                                echo "</td>";
-                                echo "</tr>";
+                           while($row = mysqli_fetch_assoc($result)) {
+                            // กำหนดสีและสถานะสินค้าหมด
+                            $is_out_of_stock = ($row['quantity'] <= 0);
+                            $qty_style = $is_out_of_stock ? "color:red; font-weight:bold;" : "color:#356CB5; font-weight:bold;";
+
+                            // 1. แปลงอักขระพิเศษให้ปลอดภัย (กัน ' และ ")
+                            $safe_name = htmlspecialchars($row['name'], ENT_QUOTES, 'UTF-8');
+                            $safe_code = htmlspecialchars($row['product_code'], ENT_QUOTES, 'UTF-8');
+                            
+                            echo "<tr>";
+                            echo "<td>" . $row['product_code'] . "</td>";
+                            echo "<td>" . $row['name'] . "</td>";
+                            echo "<td>" . $row['category'] . "</td>";
+                            echo "<td style='$qty_style'>" . $row['quantity'] . " " . $row['unit'] . "</td>";
+                            echo "<td>";
+                            
+                            if (!$is_out_of_stock) {
+                                // 2. ใช้ data-attribute แทนการส่งค่าเข้า onclick โดยตรง
+                                echo "<button type='button' class='btn-action btn-out' 
+                                        data-id='" . $row['id'] . "'
+                                        data-name='" . $safe_name . "'
+                                        data-code='" . $safe_code . "'
+                                        data-qty='" . $row['quantity'] . "'
+                                        onclick=\"openStockOutModalFromButton(this)\">
+                                        <i class='fa-solid fa-minus'></i> เบิกออก
+                                    </button>";
+                            } else {
+                                echo "<span style='color:#999; font-size:12px;'>สินค้าหมด</span>";
                             }
+                            
+                            echo "</td>";
+                            echo "</tr>";
+                        }
                         } else {
                             echo "<tr><td colspan='5' style='text-align:center;'>ไม่พบข้อมูล</td></tr>";
                         }
@@ -230,17 +238,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
     
     <script>
         // เปิด Modal
-        function openStockOutModal(id, name, code, currentQty) {
-            document.getElementById('stock_product_id').value = id;
-            document.getElementById('modal_product_name').innerText = name;
-            document.getElementById('modal_product_code').innerText = "รหัส: " + code;
-            document.getElementById('modal_current_qty').innerText = "คงเหลือปัจจุบัน: " + currentQty;
-            
-            // เก็บค่า Max ไว้เช็คกันคนกรอกเกิน
-            document.getElementById('max_qty').value = currentQty;
-            
-            document.getElementById('stockOutModal').style.display = 'flex';
-        }
+        function openStockOutModalFromButton(btn) {
+        // ดึงข้อมูลจากปุ่ม
+        var id = btn.getAttribute('data-id');
+        var name = btn.getAttribute('data-name');
+        var code = btn.getAttribute('data-code');
+        var currentQty = btn.getAttribute('data-qty'); // ดึงจำนวนคงเหลือมาด้วย
+
+        // เอาข้อมูลไปใส่ใน Modal
+        document.getElementById('stock_product_id').value = id;
+        document.getElementById('modal_product_name').innerText = name;
+        document.getElementById('modal_product_code').innerText = "รหัส: " + code;
+        document.getElementById('modal_current_qty').innerText = "คงเหลือปัจจุบัน: " + currentQty;
+        
+        // เก็บค่า Max ไว้เช็ค (กันคนกรอกเกิน)
+        document.getElementById('max_qty').value = currentQty;
+        
+        // เปิด Modal
+        document.getElementById('stockOutModal').style.display = 'flex';
+    }
+
 
         function closeStockOutModal() {
             document.getElementById('stockOutModal').style.display = 'none';

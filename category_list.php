@@ -14,24 +14,27 @@ if (!isset($_SESSION['username'])) {
    ADD CATEGORY
 ====================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_category'])) {
-
     $category_name = trim($_POST['category_name']);
     $prefix = strtoupper(trim($_POST['prefix']));
 
     if ($category_name !== "" && $prefix !== "") {
-        $stmt = $conn->prepare(
-            "INSERT INTO product_category (category_name, prefix) VALUES (?, ?)"
-        );
+        $stmt = $conn->prepare("INSERT INTO product_category (category_name, prefix) VALUES (?, ?)");
         $stmt->bind_param("ss", $category_name, $prefix);
-        $stmt->execute();
-
-        $_SESSION['swal'] = [
-            'icon' => 'success',
-            'title' => 'สำเร็จ',
-            'text' => 'เพิ่มประเภทสินค้าเรียบร้อยแล้ว'
-        ];
+        
+        if ($stmt->execute()) {
+            $_SESSION['swal'] = [
+                'icon' => 'success',
+                'title' => 'สำเร็จ',
+                'text' => 'เพิ่มประเภทสินค้าเรียบร้อยแล้ว'
+            ];
+        } else {
+             $_SESSION['swal'] = [
+                'icon' => 'error',
+                'title' => 'ผิดพลาด',
+                'text' => 'ไม่สามารถเพิ่มข้อมูลได้ (Prefix อาจซ้ำ)'
+            ];
+        }
     }
-
     header("Location: category_list.php");
     exit();
 }
@@ -40,27 +43,22 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['add_category'])) {
    EDIT CATEGORY
 ====================== */
 if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['edit_category'])) {
-
     $id = intval($_POST['id']);
     $category_name = trim($_POST['category_name']);
     $prefix = strtoupper(trim($_POST['prefix']));
 
     if ($category_name !== "" && $prefix !== "") {
-        $stmt = $conn->prepare(
-            "UPDATE product_category 
-             SET category_name = ?, prefix = ?
-             WHERE id = ?"
-        );
+        $stmt = $conn->prepare("UPDATE product_category SET category_name = ?, prefix = ? WHERE id = ?");
         $stmt->bind_param("ssi", $category_name, $prefix, $id);
-        $stmt->execute();
-
-        $_SESSION['swal'] = [
-            'icon' => 'success',
-            'title' => 'สำเร็จ',
-            'text' => 'แก้ไขข้อมูลเรียบร้อยแล้ว'
-        ];
+        
+        if ($stmt->execute()) {
+            $_SESSION['swal'] = [
+                'icon' => 'success',
+                'title' => 'สำเร็จ',
+                'text' => 'แก้ไขข้อมูลเรียบร้อยแล้ว'
+            ];
+        }
     }
-
     header("Location: category_list.php");
     exit();
 }
@@ -70,286 +68,253 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['edit_category'])) {
 ====================== */
 $search_text = $_GET['search'] ?? "";
 $sql = "SELECT * FROM product_category";
+$stmt = null;
+$result = null;
+
 if ($search_text !== "") {
+    $sql .= " WHERE category_name LIKE ? OR prefix LIKE ?";
+    $sql .= " ORDER BY id DESC";
+    $stmt = $conn->prepare($sql);
     $like = "%{$search_text}%";
-    $sql .= " WHERE category_name LIKE '$like' OR prefix LIKE '$like'";
+    $stmt->bind_param("ss", $like, $like);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $sql .= " ORDER BY id DESC";
+    $result = $conn->query($sql);
 }
-$sql .= " ORDER BY id DESC";
-$categories = $conn->query($sql);
+
+$categories = $result; 
+if ($stmt) { $stmt->close(); }
 ?>
+
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<title>ประเภทสินค้า</title>
-
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-<link rel="stylesheet" href="style.css">
-
-<style>
-.content-container { padding:30px; font-family:"Prompt"; }
-.page-title { font-size:28px; font-weight:700; margin-bottom:20px; }
-
-.search-box {
-    background:#fff;
-    padding:18px 20px;
-    border-radius:14px;
-    display:flex;
-    gap:10px;
-    align-items:center;
-    box-shadow:0 4px 15px rgba(0,0,0,0.05);
-    margin-bottom:20px;
-}
-.search-box input {
-    flex:1;
-    border:none;
-    background:#eef2f6;
-    padding:12px 14px;
-    border-radius:10px;
-}
-.btn-search {
-    background:#356CB5;
-    color:#fff;
-    padding:10px 18px;
-    border-radius:10px;
-    border:none;
-    font-weight:600;
-}
-.btn-reset {
-    background:#e7ebf0;
-    padding:10px 16px;
-    border-radius:10px;
-    text-decoration:none;
-    color:#333;
-}
-
-table {
-    width:100%;
-    background:#fff;
-    border-radius:14px;
-    overflow:hidden;
-    box-shadow:0 4px 15px rgba(0,0,0,0.04);
-}
-th, td {
-    padding:14px 12px;
-    border-bottom:1px solid #eee;
-}
-th {
-    background:#f3f6fb;
-    font-weight:600;
-}
-
-.btn-add {
-    background:#28a745;
-    color:#fff;
-    padding:10px 18px;
-    border-radius:10px;
-    border:none;
-}
-.btn-edit {
-    background:#f1c40f;
-    color:#fff;
-    padding:6px 12px;
-    border-radius:8px;
-    border:none;
-}
-.btn-delete {
-    background:#e74c3c;
-    color:#fff;
-    padding:6px 12px;
-    border-radius:8px;
-    text-decoration:none;
-}
-
-button {
-    border: none !important;
-    outline: none !important;
-}
-
-button:focus,
-button:active,
-button:focus-visible {
-    outline: none !important;
-    box-shadow: none !important;
-}
-
-/* สำหรับ Chrome / Safari */
-button {
-    -webkit-appearance: none;
-    appearance: none;
-}
-
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ข้อมูลประเภทสินค้า - Onin Shop Stock</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<?php include "sidebar.php"; ?>
+    <nav class="sidebar">
+        <div class="sidebar-header">Onin Shop Stock</div>
+        <ul class="menu-list">
+           <li><a href="dashboard.php" ><i class="fa-solid fa-chart-line"></i> <span class="menu-text">Dashboard</span></a></li>
+            <li><a href="product_list.php"><i class="fa-solid fa-box-open"></i> <span class="menu-text">ข้อมูลสินค้า</span></a></li>
+            <li><a href="category_list.php" class="active"><i class="fa-solid fa-clipboard-check"></i> <span class="menu-text">ข้อมูลประเภทสินค้า</span></a></li>
+            <li><a href="stock_in.php" ><i class="fa-solid fa-dolly"></i> รับเข้าสินค้า</a></li>
+            <li><a href="stock_out.php" ><i class="fa-solid fa-boxes-packing"></i> เบิกออก/ตัดสต็อก</a></li>
+            <li><a href="stock_adjust.php" ><i class="fa-solid fa-clipboard-check"></i> ตรวจนับ/ปรับปรุง</a></li>
+            <li><a href="#"><i class="fa-solid fa-heart"></i> <span class="menu-text">สินค้ายอดนิยม</span></a></li>
+            <li><a href="report_low_stock.php"><i class="fa-solid fa-triangle-exclamation"></i> <span class="menu-text">รายงานสินค้าใกล้หมด</span></a></li>
+            <li><a href="stock_history.php"><i class="fa-solid fa-clock-rotate-left"></i> ประวัติสต็อก</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <li><a href="#" onclick="confirmLogout(); return false;" class="btn-logout"><i class="fa-solid fa-power-off"></i> ออกจากระบบ</a></li>
+        </div>
+    </nav>
 
-<div class="main-content">
-    <div class="top-navbar">
-        <div class="nav-left"><i class="fa-solid fa-bars"></i></div>
-        <div class="nav-right"><img src="img/profile.png"></div>
+    <div class="main-content">
+        <div class="top-navbar">
+            <div class="nav-left">
+                <i class="fa-solid fa-bars"></i> 
+            </div>
+            <div class="nav-right">
+                <?php $user_display = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin'; ?>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span style="font-weight:500; color:#333;"><?php echo $user_display; ?></span>
+                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_display); ?>&background=0D8ABC&color=fff" alt="User Profile">
+                </div>
+            </div>
+        </div>
+
+        <div class="content-container">
+            <h2 class="page-title">ข้อมูลประเภทสินค้า</h2>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <form method="GET" class="search-box" style="margin-bottom: 0; width: 60%;">
+                    <input type="text" name="search" class="search-input" placeholder="ค้นหาชื่อประเภท หรือ Prefix..." value="<?= htmlspecialchars($search_text) ?>">
+                    <button type="submit" class="btn-search">ค้นหา</button>
+                    <?php if ($search_text !== ""): ?>
+                        <a href="category_list.php" style="margin-left: 10px; color: #666; text-decoration: none;">ล้างค่า</a>
+                    <?php endif; ?>
+                </form>
+
+                <button class="btn-add" onclick="openAddModal()">
+                    <i class="fa-solid fa-plus"></i> เพิ่มประเภทสินค้า
+                </button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th width="10%">ลำดับ</th>
+                            <th width="20%">Prefix (รหัสย่อ)</th>
+                            <th width="50%">ชื่อประเภทสินค้า</th>
+                            <th width="20%">จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php if ($categories->num_rows > 0): ?>
+                            <?php $i=1; while($row = $categories->fetch_assoc()): ?>
+                            <tr>
+                                <td><?= $i++ ?></td>
+                                <td><span style="background:#eef2f6; padding:4px 8px; border-radius:5px; font-weight:500;"><?= htmlspecialchars($row['prefix']) ?></span></td>
+                                <td><?= htmlspecialchars($row['category_name']) ?></td>
+                                <td>
+                                    <button class="btn-action btn-edit" 
+                                        onclick="openEditModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['prefix']) ?>', '<?= htmlspecialchars($row['category_name']) ?>')">
+                                        <i class="fa-solid fa-pen-to-square"></i> Edit
+                                    </button>
+
+                                    <button class="btn-action btn-delete" 
+                                        onclick="confirmDelete(<?= $row['id'] ?>)">
+                                        <i class="fa-solid fa-trash"></i> Delete
+                                    </button>
+                                </td>
+                            </tr>
+                            <?php endwhile; ?>
+                        <?php else: ?>
+                            <tr><td colspan="4" style="text-align:center;">ไม่พบข้อมูล</td></tr>
+                        <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-<div class="content-container">
+    <div id="addModal" class="modal-overlay">
+        <div class="login-box" style="width: 500px;">
+            <div class="header-text">
+                <h2>เพิ่มประเภทสินค้า</h2>
+            </div>
+            <form method="post">
+                <input type="hidden" name="add_category" value="1">
+                
+                <div class="form-group">
+                    <label>Prefix (อักษรย่อภาษาอังกฤษ)</label>
+                    <input type="text" name="prefix" placeholder="เช่น SN, DR, HM" required style="text-transform:uppercase;">
+                    <small style="color:#888;">ใช้สำหรับสร้างรหัสสินค้าอัตโนมัติ (เช่น SN001)</small>
+                </div>
 
-<div class="page-title">ข้อมูลประเภทสินค้า</div>
+                <div class="form-group">
+                    <label>ชื่อประเภทสินค้า</label>
+                    <input type="text" name="category_name" placeholder="เช่น ขนม, เครื่องดื่ม" required>
+                </div>
 
-<div style="text-align:right; margin-bottom:20px;">
-<button class="btn-add" data-bs-toggle="modal" data-bs-target="#addModal">
-+ เพิ่มประเภทสินค้า
-</button>
-</div>
+                <div class="modal-footer" style="justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-cancel" onclick="closeAddModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-save">บันทึก</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<form class="search-box" method="get">
-<input type="text" name="search"
- placeholder="ค้นหาชื่อประเภทสินค้า / Prefix"
- value="<?= htmlspecialchars($search_text) ?>">
-<button class="btn-search">ค้นหา</button>
-<?php if ($search_text !== ""): ?>
-<a href="category_list.php" class="btn-reset">ล้าง</a>
-<?php endif; ?>
-</form>
+    <div id="editModal" class="modal-overlay">
+        <div class="login-box" style="width: 500px;">
+            <div class="header-text">
+                <h2>แก้ไขประเภทสินค้า</h2>
+            </div>
+            <form method="post">
+                <input type="hidden" name="edit_category" value="1">
+                <input type="hidden" name="id" id="edit-id">
+                
+                <div class="form-group">
+                    <label>Prefix (อักษรย่อ)</label>
+                    <input type="text" name="prefix" id="edit-prefix" required style="text-transform:uppercase;">
+                </div>
 
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Prefix</th>
-<th>ชื่อประเภทสินค้า</th>
-<th>จัดการ</th>
-</tr>
-</thead>
-<tbody>
+                <div class="form-group">
+                    <label>ชื่อประเภทสินค้า</label>
+                    <input type="text" name="category_name" id="edit-name" required>
+                </div>
 
-<?php $i=1; while($row = $categories->fetch_assoc()): ?>
-<tr>
-<td><?= $i++ ?></td>
-<td><?= $row['prefix'] ?></td>
-<td><?= $row['category_name'] ?></td>
-<td>
-<button class="btn-edit"
- data-bs-toggle="modal"
- data-bs-target="#editModal"
- data-id="<?= $row['id'] ?>"
- data-prefix="<?= $row['prefix'] ?>"
- data-name="<?= $row['category_name'] ?>">
-แก้ไข
-</button>
+                <div class="modal-footer" style="justify-content: flex-end; gap: 10px; margin-top: 20px;">
+                    <button type="button" class="btn-cancel" onclick="closeEditModal()">ยกเลิก</button>
+                    <button type="submit" class="btn-save">บันทึกการแก้ไข</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-<button class="btn-delete"
- onclick="confirmDelete(<?= $row['id'] ?>)">
-ลบ
-</button>
+    <div id="logoutModal" class="modal-overlay">
+        <div class="login-box logout-modal-content">
+            <i class="fa-solid fa-right-from-bracket logout-icon"></i>
+            <h2 class="logout-title">ยืนยันการออกจากระบบ</h2>
+            <p class="logout-desc">คุณต้องการออกจากระบบใช่หรือไม่?</p>
+            <div style="display: flex; justify-content: center; gap: 15px;">
+                <button class="btn-cancel" onclick="closeLogoutModal()">ยกเลิก</button>
+                <a href="logout.php" class="btn-confirm-logout">ออกจากระบบ</a>
+            </div>
+        </div>
+    </div>
 
-</td>
-</tr>
-<?php endwhile; ?>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-</tbody>
-</table>
-
-</div>
-</div>
-
-<!-- ADD MODAL -->
-<div class="modal fade" id="addModal">
-<div class="modal-dialog modal-dialog-centered">
-<form method="post" class="modal-content">
-<input type="hidden" name="add_category">
-
-<div class="modal-header">
-<h5>เพิ่มประเภทสินค้า</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<div class="modal-body">
-<input class="form-control mb-2" name="prefix" placeholder="Prefix" required>
-<input class="form-control" name="category_name" placeholder="ชื่อประเภทสินค้า" required>
-</div>
-
-<div class="modal-footer">
-<button class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-<button class="btn btn-success">บันทึก</button>
-</div>
-</form>
-</div>
-</div>
-
-<!-- EDIT MODAL -->
-<div class="modal fade" id="editModal">
-<div class="modal-dialog modal-dialog-centered">
-<form method="post" class="modal-content">
-<input type="hidden" name="edit_category">
-<input type="hidden" name="id" id="edit-id">
-
-<div class="modal-header">
-<h5>แก้ไขประเภทสินค้า</h5>
-<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<div class="modal-body">
-<input class="form-control mb-2" id="edit-prefix" name="prefix" required>
-<input class="form-control" id="edit-name" name="category_name" required>
-</div>
-
-<div class="modal-footer">
-<button class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-<button class="btn btn-primary">บันทึก</button>
-</div>
-</form>
-</div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-function confirmDelete(id) {
-    Swal.fire({
-        title: 'ยืนยันการลบ?',
-        text: 'ข้อมูลนี้จะไม่สามารถกู้คืนได้',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#e74c3c',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'ลบข้อมูล',
-        cancelButtonText: 'ยกเลิก'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = 'category_delete.php?id=' + id;
+    <script>
+        // Modal Functions
+        function openAddModal() {
+            document.getElementById('addModal').style.display = 'flex';
         }
-    });
-}
-</script>
+        function closeAddModal() {
+            document.getElementById('addModal').style.display = 'none';
+        }
 
+        function openEditModal(id, prefix, name) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('edit-prefix').value = prefix;
+            document.getElementById('edit-name').value = name;
+            document.getElementById('editModal').style.display = 'flex';
+        }
+        function closeEditModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
 
-<script>
-document.getElementById('editModal').addEventListener('show.bs.modal', function (e) {
-    const b = e.relatedTarget;
-    document.getElementById('edit-id').value = b.dataset.id;
-    document.getElementById('edit-prefix').value = b.dataset.prefix;
-    document.getElementById('edit-name').value = b.dataset.name;
-});
-</script>
+        // Logout Functions
+        function confirmLogout() {
+            document.getElementById('logoutModal').style.display = 'flex';
+        }
+        function closeLogoutModal() {
+            document.getElementById('logoutModal').style.display = 'none';
+        }
 
-<?php if (isset($_SESSION['swal'])): ?>
-<script>
-Swal.fire({
-    icon: '<?= $_SESSION['swal']['icon'] ?>',
-    title: '<?= $_SESSION['swal']['title'] ?>',
-    text: '<?= $_SESSION['swal']['text'] ?>',
-    showConfirmButton: false,
-    timer: 1200,
-    timerProgressBar: true
-});
-</script>
-<?php unset($_SESSION['swal']); endif; ?>
+        // Delete Function (SweetAlert)
+        function confirmDelete(id) {
+            Swal.fire({
+                title: 'ยืนยันการลบ?',
+                text: 'ข้อมูลนี้จะไม่สามารถกู้คืนได้',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'ลบข้อมูล',
+                cancelButtonText: 'ยกเลิก'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = 'category_delete.php?id=' + id;
+                }
+            });
+        }
+    </script>
 
+    <?php if (isset($_SESSION['swal'])): ?>
+    <script>
+        Swal.fire({
+            icon: '<?= $_SESSION['swal']['icon'] ?>',
+            title: '<?= $_SESSION['swal']['title'] ?>',
+            text: '<?= $_SESSION['swal']['text'] ?>',
+            showConfirmButton: false,
+            timer: 1500
+        });
+    </script>
+    <?php unset($_SESSION['swal']); endif; ?>
 
 </body>
 </html>
