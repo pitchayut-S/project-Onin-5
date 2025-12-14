@@ -1,3 +1,7 @@
+html {
+    overflow-y: scroll;
+}
+
 /* --- ใช้ CSS ชุดเดิมจาก Dashboard --- */
 * {
     box-sizing: border-box;
@@ -348,6 +352,7 @@ body.login-body {
     left: 0;
     top: 0;
     z-index: 100;
+    transition: width 0.3s ease;
 }
 
 .sidebar-header {
@@ -357,6 +362,13 @@ body.login-body {
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     text-align: center;
 }
+
+.menu-list, .sidebar-footer { 
+    list-style: none; 
+}
+
+/* ===== FIX MODAL + SIDEBAR ===== */
+body.modal-open { padding-right: 0 !important; }
 
 .menu-list,
 .sidebar-footer {
@@ -414,6 +426,7 @@ body.login-body {
     width: calc(100% - 250px);
     display: flex;
     flex-direction: column;
+    transition: margin-left 0.3s ease, width 0.3s ease;
 }
 
 .top-navbar {
@@ -817,6 +830,8 @@ th {
     font-size: 16px;
     display: inline-block;
 }
+.btn-confirm-logout:hover { background-color: #b0021f; }
+
 
 .btn-confirm-logout:hover {
     background-color: #b0021f;

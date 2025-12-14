@@ -2,7 +2,7 @@
 session_start();
 require_once "db.php";
 
-// เช็ค Login
+// ตรวจสอบการล็อกอิน
 if (!isset($_SESSION['username'])) {
     header("Location: index.php");
     exit();
@@ -112,153 +112,117 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ข้อมูลสินค้า - Onin Shop Stock</title>
+    <title>สินค้า - Onin Shop Stock</title>
+    <!-- <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"> -->
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
-    
+
     <style>
-        /* --- ใช้ CSS ชุดเดิมจาก Dashboard --- */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', sans-serif; }
-        body { display: flex; min-height: 100vh; background-color: #E5E5E5; }
-        
-        /* Sidebar */
-        .sidebar { width: 250px; background-color: #356CB5; color: white; display: flex; flex-direction: column; position: fixed; height: 100%; left: 0; top: 0; z-index: 100; }
-        .sidebar-header { padding: 20px; font-size: 20px; font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); }
-        .menu-list { list-style: none; flex-grow: 1; padding-top: 10px; }
-        .menu-list li a { display: flex; align-items: center; padding: 15px 20px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 16px; transition: 0.3s; }
-        .menu-list li a:hover, .menu-list li a.active { background-color: rgba(255,255,255,0.2); color: white; border-left: 4px solid white; }
-        .menu-list li a i { width: 30px; font-size: 18px; }
-        .sidebar-footer { margin-top: auto; width: 100%; flex-grow: 0 !important;}
-        .sidebar-footer li { list-style: none; }
-        .sidebar-footer li a { display: flex; align-items: center; padding: 15px 20px; color: rgba(255,255,255,0.8); text-decoration: none; font-size: 16px; transition: 0.3s; }
-        .sidebar-footer li a:hover { background-color: rgba(255,255,255,0.2); color: white; }
-        .btn-logout { background-color: #D90429; color: white !important; }
-        .btn-logout:hover { background-color: #b0021f; }
-
-        /* Main Content */
-        .main-content { margin-left: 250px; width: calc(100% - 250px); display: flex; flex-direction: column; }
-        .top-navbar { height: 60px; background-color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 30px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-        .nav-left i { font-size: 24px; cursor: pointer; color: #333; }
-        .nav-right img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid #ddd; }
         .content-container { padding: 30px; }
-        .page-title { font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #333; }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
 
-        /* --- ส่วนที่เพิ่มใหม่สำหรับหน้านี้ --- */
-        
-        /* ช่องค้นหา */
+        /* กล่องค้นหาโค้งมน */
         .search-box {
-            background-color: white;
-            padding: 20px;
+            background: #fff;
+            padding: 18px 20px;
+            border-radius: 14px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
             margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
-            border-radius: 5px;
         }
-        .search-input {
-            flex-grow: 1; /* ให้ยาวเต็มพื้นที่ */
-            padding: 10px 15px;
+        .search-box input {
+            flex: 1;
             border: none;
-            background-color: #E0E0E0; /* สีเทาตามรูป */
-            border-radius: 5px;
+            background: #eef2f6;
+            padding: 12px 14px;
+            border-radius: 10px;
             font-size: 14px;
-            outline: none;
-        }
-        .btn-search {
-            background-color: #007bff; /* สีฟ้า */
-            color: white;
-            border: none;
-            padding: 10px 25px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: 500;
-        }
-        .btn-search:hover { background-color: #0069d9; }
-
-        /* ตาราง */
-        .table-container {
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            overflow-x: auto; /* เผื่อตารางล้นจอ */
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            min-width: 800px; /* ความกว้างขั้นต่ำ */
-        }
-        th, td {
-            text-align: left;
-            padding: 15px;
-            border-bottom: 1px solid #eee;
-            vertical-align: middle;
-        }
-        th {
-            background-color: #E0E0E0; /* หัวตารางสีเทา */
-            font-weight: 600;
-            color: #333;
-        }
-        
-        /* รูปภาพสินค้าจำลอง */
-        .product-img-placeholder {
-            width: 40px;
-            height: 40px;
-            background-color: #ddd;
-            display: inline-block;
         }
 
-        /* ปุ่มจัดการ (Edit / Delete) */
-        .btn-action {
-            padding: 5px 10px;
-            border-radius: 15px;
-            color: white;
-            text-decoration: none;
-            font-size: 12px;
-            margin-right: 5px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
+        /* ปุ่มค้นหา / reset โค้งมน */
+        .btn-search { 
+            background:#356CB5; 
+            color:white; 
+            padding:10px 18px; 
+            border:none; 
+            border-radius:10px; 
+            font-weight:600; 
+            cursor:pointer;
         }
-        .btn-edit { background-color: #007bff; }
-        .btn-edit:hover { background-color: #0069d9; }
-        .btn-delete { background-color: #dc3545; }
-        .btn-delete:hover { background-color: #c82333; }
 
-        /* ปุ่มเพิ่มข้อมูล (ลอยขวาล่าง) */
-        .btn-add-container {
-            margin-top: 20px;
-            display: flex;
-            justify-content: flex-end;
+        .btn-reset { 
+            background:#e7ebf0; 
+            padding:10px 16px; 
+            border-radius:10px; 
+            text-decoration:none; 
+            color:#333; 
         }
-        .btn-add {
-            background-color: #1FC938; /* สีเขียว */
-            color: white;
-            padding: 10px 30px;
-            border-radius: 5px;
-            text-decoration: none;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .btn-add:hover { background-color: #1aa830; }
 
-       /* Responsive */
-        @media (max-width: 1024px) {
-            .card-grid { grid-template-columns: repeat(2, 1fr); } /* จอเล็กลง เหลือ 2 คอลัมน์ */
+        /* ตารางโค้งมน */
+        table { 
+            width: 100%; 
+            border-collapse: separate;
+            border-spacing: 0;
+            background:#fff; 
+            border-radius: 14px;
+            overflow: hidden;
+            min-width:900px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
         }
-        @media (max-width: 768px) {
-            .sidebar { width: 70px; }
-            .sidebar-header, .menu-text { display: none; } /* ย่อเมนู */
-            .menu-list li a { justify-content: center; padding: 15px 0; }
-            .menu-list li a i { width: auto; font-size: 24px; }
-            .main-content { margin-left: 70px; width: calc(100% - 70px); }
-            .card-grid { grid-template-columns: 1fr; } /* มือถือ เหลือ 1 คอลัมน์ */
+
+        th, td { 
+            padding:14px 12px; 
+            border-bottom:1px solid #eee; 
+        }
+
+        th { 
+            background:#f3f6fb; 
+            font-weight:600; 
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        /* รูปภาพโค้งมน */
+        .product-img { 
+            width: 65px; 
+            height: 65px; 
+            object-fit: cover; 
+            border-radius:12px; 
+            border:1px solid #ddd; 
+        }
+
+        /* Badge โค้งมน */
+        .badge {
+            padding:6px 12px;
+            font-size:12px;
+            font-weight:600;
+            border-radius:20px;
+        }
+        .stock-ok { background:#e6f6ed; color:#1b9c5a; }
+        .stock-low { background:#fdecea; color:#c0392b; }
+
+        /* ปุ่มจัดการโค้งมน */
+        .btn-edit { 
+            background:#f1c40f; 
+            padding:7px 12px; 
+            color:white; 
+            border-radius:8px; 
+            text-decoration:none; 
+        }
+        .btn-delete { 
+            background:#e74c3c; 
+            padding:7px 12px; 
+            color:white; 
+            border-radius:8px; 
+            text-decoration:none; 
         }
     </style>
+
 </head>
+
 <body>
 
     <nav class="sidebar">
@@ -282,19 +246,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['a
         </div>
     </nav>
 
-    <div class="main-content">
-        <div class="top-navbar">
-            <div class="nav-left">
-                <i class="fa-solid fa-bars"></i>
-            </div>
-            <div class="nav-right">
-                <?php $user_display = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin'; ?>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <span style="font-weight:500; color:#333;"><?php echo $user_display; ?></span>
-                    <img src="https://ui-avatars.com/api/?name=<?php echo urlencode($user_display); ?>&background=0D8ABC&color=fff" alt="User Profile">
-                </div>
-            </div>
-        </div>
+<div class="main-content">
+
+    <div class="top-navbar">
+        <div class="nav-left"><i class="fa-solid fa-bars"></i></div>
+        <div class="nav-right"><img src="img/profile.png"></div>
+    </div>
 
         <div class="content-container">
             <h2 class="page-title">ข้อมูลสินค้า</h2>

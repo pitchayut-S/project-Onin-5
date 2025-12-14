@@ -1,5 +1,12 @@
 <?php
 session_start();
+require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
+if (!isset($menu_config)) {
+    require_once __DIR__ . '/menu-sidebar.php';
+}
+
+$current_page = basename(path: $_SERVER['PHP_SELF']);
+require_once __DIR__ . '/components/alert.php';
 require_once "db.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
@@ -104,27 +111,27 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15); }
 
-        /* --- CSS ของ POPUP (Modal) --- */
+        /* --- CSS ของ POPUP --- */
         .modal-overlay {
-            display: none; /* ซ่อนไว้ก่อน */
+            display: none;
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.5); z-index: 1000;
             justify-content: center; align-items: center;
             backdrop-filter: blur(4px);
         }
 
-        /* กล่อง Login (ขนาดเล็ก) */
         .login-box {
             background-color: white; width: 500px; padding: 40px;
             border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            position: relative; animation: popupFadeIn 0.3s ease-out;
+            animation: popupFadeIn 0.3s ease-out;
+            position: relative;
         }
 
-        /* กล่อง Register (ขนาดใหญ่กว่าเพราะช่องเยอะ) */
         .register-box {
             background-color: white; width: 800px; padding: 40px 60px;
             border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            position: relative; animation: popupFadeIn 0.3s ease-out;
+            animation: popupFadeIn 0.3s ease-out;
+            position: relative;
         }
 
         @keyframes popupFadeIn {
@@ -139,30 +146,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         .close-btn:hover { color: #ff4d4d; }
 
-        /* Header ใน Popup */
-        .header-text h3 { font-size: 16px; color: #555; font-weight: 400; margin-bottom: 5px; text-transform: uppercase; text-align: center;}
-        .header-text h1 { font-size: 24px; color: #356CB5; font-weight: 600; text-align: center; margin-bottom: 30px;}
-        .header-text h2 { font-size: 20px; color: #356CB5; font-weight: 600; text-align: center; margin-bottom: 30px;} /* สำหรับหน้า Register */
+        .header-text h3 { font-size: 16px; color: #555; text-align: center; margin-bottom: 5px; }
+        .header-text h1 { font-size: 24px; color: #356CB5; text-align: center; margin-bottom: 30px; }
+        .header-text h2 { font-size: 20px; color: #356CB5; text-align: center; margin-bottom: 20px; }
 
-        /* Form Inputs */
         .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-size: 14px; color: #333; margin-bottom: 8px; font-weight: 500; }
-        .form-group input { width: 100%; padding: 12px 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; outline: none; transition: 0.3s;}
-        .form-group input:focus { border-color: #356CB5; }
+        .form-group label { display: block; font-size: 14px; margin-bottom: 8px; }
+        .form-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
 
-        /* Register Grid Layout (แบ่งซ้ายขวา) */
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; row-gap: 15px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-        /* Buttons & Links */
-        .btn-container { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
-        .btn-submit { background-color: #356CB5; color: white; border: none; padding: 10px 25px; font-size: 16px; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+        .btn-submit {
+            background-color: #356CB5; color: white;
+            padding: 10px 25px; border: none; border-radius: 8px;
+            cursor: pointer; transition: 0.3s;
+        }
         .btn-submit:hover { background-color: #285291; }
-        
-        /* Link สลับหน้า */
-        .link-switch { font-size: 14px; color: #666; cursor: pointer; text-decoration: none; }
-        .link-switch:hover { color: #356CB5; text-decoration: underline; }
 
-        /* Responsive */
+        .link-switch { color: #666; cursor: pointer; }
+        .link-switch:hover { color: #356CB5; }
+
         @media (max-width: 820px) {
             .register-box { width: 95%; padding: 20px; }
             .login-box { width: 90%; }
@@ -178,6 +181,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <button class="btn-start" onclick="openModal('login')">เริ่มต้นใช้งาน</button>
     </div>
 
+    <!-- ------------------ LOGIN MODAL ------------------ -->
     <div class="modal-overlay" id="loginModal">
         <div class="login-box">
             <span class="close-btn" onclick="closeAllModals()">&times;</span>
@@ -185,9 +189,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <h3>WELCOME TO</h3>
                 <h1>Onin Shop Stock</h1>
             </div>
-            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
-                <input type="hidden" name="action" value="login">
 
+            <form action="login.php" method="POST">
                 <div class="form-group">
                     <label>ชื่อผู้ใช้งาน</label>
                     <input type="text" name="username" id="username" placeholder="กรุณากรอก ชื่อผู้ใช้งาน" required>
@@ -196,7 +199,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     <label>รหัสผ่าน</label>
                     <input type="password" name="password" id="password" placeholder="กรุณากรอก รหัสผ่าน" required>
                 </div>
-                <div class="btn-container">
+
+                <div style="display: flex; justify-content: space-between;">
                     <span class="link-switch" onclick="switchModal('register')">สมัครสมาชิกใหม่?</span>
                     <button type="submit" class="btn-submit">เข้าสู่ระบบ</button>
                 </div>
@@ -204,16 +208,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         </div>
     </div>
 
+    <!-- ------------------ REGISTER MODAL ------------------ -->
     <div class="modal-overlay" id="registerModal">
         <div class="register-box">
             <span class="close-btn" onclick="closeAllModals()">&times;</span>
+
             <div class="header-text">
                 <h1>สมัครสมาชิก</h1>
                 <h2>Onin Shop Stock</h2>
             </div>
-            <form action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>" method="POST">
-                <input type="hidden" name="action" value="register">
 
+            <form action="register.php" method="POST">
                 <div class="form-grid">
                     <div class="form-group">
                         <label>ชื่อ-นามสกุล</label>
@@ -241,7 +246,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     </div>
                 </div>
 
-                <div class="btn-container" style="justify-content: flex-end; gap: 20px; margin-top: 20px;">
+                <div style="display:flex; justify-content: flex-end; gap: 20px; margin-top: 20px;">
                     <span class="link-switch" onclick="switchModal('login')">กลับไปเข้าสู่ระบบ</span>
                     <button type="submit" class="btn-submit">สมัครสมาชิก</button>
                 </div>
@@ -250,32 +255,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </div>
 
     <script>
-        // ฟังก์ชันเปิด Modal ตามชื่อที่ส่งมา ('login' หรือ 'register')
         function openModal(type) {
-            closeAllModals(); // ปิดอันเก่าก่อนเสมอเพื่อความชัวร์
-            if(type === 'login') {
-                document.getElementById('loginModal').style.display = 'flex';
-            } else if (type === 'register') {
-                document.getElementById('registerModal').style.display = 'flex';
-            }
+            closeAllModals();
+            document.getElementById(type + 'Modal').style.display = 'flex';
         }
-
-        // ฟังก์ชันสลับ Modal (จริงๆ คือการเรียก openModal นั่นแหละ)
-        function switchModal(toType) {
-            openModal(toType);
+        function switchModal(to) {
+            openModal(to);
         }
-
-        // ฟังก์ชันปิดทุก Modal
         function closeAllModals() {
             document.getElementById('loginModal').style.display = 'none';
             document.getElementById('registerModal').style.display = 'none';
         }
-
-        // คลิกพื้นหลังสีดำเพื่อปิด
         window.onclick = function(event) {
-            if (event.target.className === 'modal-overlay') {
-                closeAllModals();
-            }
+            if (event.target.className === 'modal-overlay') { closeAllModals(); }
         }
     </script>
     
