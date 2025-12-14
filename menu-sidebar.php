@@ -29,6 +29,6 @@ $menu_config = [
     [
         'name' => 'รายงาน',
         'icon' => 'fa-solid fa-file-invoice',
-        'link' => 'Report.php',
+        'link' => 'ReportStock.php',
     ],
-];
+    ];

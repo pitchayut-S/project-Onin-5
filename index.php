@@ -1,77 +1,9 @@
 <?php
 session_start();
-require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
-if (!isset($menu_config)) {
-    require_once __DIR__ . '/menu-sidebar.php';
-}
-
-$current_page = basename(path: $_SERVER['PHP_SELF']);
-require_once __DIR__ . '/components/alert.php';
-
-// ตรวจสอบการส่งค่าจากฟอร์ม
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
-    // ------------------- ส่วน Login -------------------
-    if (isset($_POST['action']) && $_POST['action'] == 'login') {
-        $username = mysqli_real_escape_string($conn, $_POST['username']);
-        $password = $_POST['password'] ?? ''; // รหัสผ่านที่กรอกมา
-
-        // ดึงข้อมูล User จากฐานข้อมูล
-        $sql = "SELECT * FROM users WHERE username = '$username'";
-        $result = mysqli_query($conn, $sql);
-
-        if (mysqli_num_rows($result) == 1) {
-            $row = mysqli_fetch_assoc($result);
-            // ตรวจสอบรหัสผ่าน (เทียบรหัสที่กรอก กับ Hash ในฐานข้อมูล)
-            if (password_verify($password, $row['password'])) {
-                // ล็อกอินสำเร็จ
-                $_SESSION['userid'] = $row['id'];
-                $_SESSION['username'] = $row['fullname']; // เก็บชื่อจริงไปแสดง
-                header("Location: dashboard.php");
-                exit();
-            } else {
-                echo "<script>alert('รหัสผ่านไม่ถูกต้อง');</script>";
-            }
-        } else {
-            echo "<script>alert('ไม่พบชื่อผู้ใช้งานนี้ในระบบ');</script>";
-        }
-    } 
-    
-    // ------------------- ส่วน Register -------------------
-    elseif (isset($_POST['action']) && $_POST['action'] == 'register') {
-        $fullname = mysqli_real_escape_string($conn, $_POST['fullname']);
-        $phone = mysqli_real_escape_string($conn, $_POST['phone']);
-        $username = mysqli_real_escape_string($conn, $_POST['username']);
-        $email = mysqli_real_escape_string($conn, $_POST['email']);
-        $password = $_POST['password'];
-        $confirm_password = $_POST['confirm_password'];
-
-        // เช็คว่ารหัสผ่านตรงกันไหม
-        if ($password !== $confirm_password) {
-            echo "<script>alert('รหัสผ่านยืนยันไม่ตรงกัน');</script>";
-        } else {
-            // เช็คว่า Username ซ้ำไหม
-            $check_user = "SELECT * FROM users WHERE username = '$username'";
-            $query_check = mysqli_query($conn, $check_user);
-
-            if (mysqli_num_rows($query_check) > 0) {
-                echo "<script>alert('ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาเปลี่ยนใหม่');</script>";
-            } else {
-                // เข้ารหัส Password เพื่อความปลอดภัย (Hash)
-                $password_hashed = password_hash($password, PASSWORD_DEFAULT);
-
-                // บันทึกลงฐานข้อมูล
-                $sql = "INSERT INTO users (fullname, phone, username, password, email) 
-                        VALUES ('$fullname', '$phone', '$username', '$password_hashed', '$email')";
-
-                if (mysqli_query($conn, $sql)) {
-                    echo "<script>alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');</script>";
-                } else {
-                    echo "<script>alert('เกิดข้อผิดพลาด: " . mysqli_error($conn) . "');</script>";
-                }
-            }
-        }
-    }
+// ถ้าล็อกอินอยู่แล้ว ให้เด้งไป Dashboard เลย ไม่ต้องล็อกอินซ้ำ
+if (isset($_SESSION['username'])) {
+    header("Location: dashboard.php");
+    exit();
 }
 ?>
 
@@ -80,12 +12,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Onin Shop Stock - ระบบบริหารจัดการสต็อก</title>
+    <title>Onin Shop Stock - เข้าสู่ระบบ</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
-    
-    
     <style>
-        /* --- CSS พื้นฐาน --- */
+        /* (ใช้ CSS เดิมของคุณได้เลยครับ ผมละไว้เพื่อความกระชับ) */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', sans-serif; }
         body {
             height: 100vh; width: 100%;
@@ -93,158 +23,79 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             display: flex; justify-content: center; align-items: center; flex-direction: column;
             overflow: hidden;
         }
+        /* ... CSS เดิม ... */
+        /* เพิ่มเติม CSS ให้ Popup */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(4px); }
+        .login-box { background-color: white; width: 500px; padding: 40px; border-radius: 15px; position: relative; }
+        .register-box { background-color: white; width: 800px; padding: 40px; border-radius: 15px; position: relative; }
+        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 28px; cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn-submit { background-color: #356CB5; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; width: 100%; }
+        .link-switch { color: #356CB5; cursor: pointer; display:block; text-align:right; margin-bottom:10px; }
+        .btn-start { padding: 15px 30px; font-size: 20px; border-radius: 10px; border: 1px solid #ccc; cursor: pointer; background: white; color: #356CB5; font-weight: bold;}
 
-        /* --- เนื้อหาหน้าหลัก --- */
-        .main-content { text-align: center; padding: 20px; }
-        h1 { color: #356CB5; font-size: 48px; font-weight: 600; margin-bottom: 10px; }
-        p { color: #333; font-size: 24px; font-weight: 400; margin-bottom: 40px; }
-        .btn-start {
-            display: inline-block; background-color: #FFFFFF; color: #356CB5;
-            font-size: 20px; font-weight: 600; padding: 12px 40px; border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); transition: all 0.3s ease;
-            border: 1px solid rgba(53, 108, 181, 0.1); cursor: pointer;
+        /*  ส่วนที่เพิ่ม: ปรับฟอนต์ SweetAlert2 ให้เป็น Prompt  */
+        div:where(.swal2-container) .swal2-popup {
+            font-family: 'Prompt', sans-serif !important;
         }
-        .btn-start:hover { transform: translateY(-2px); box-shadow: 0 6px 10px rgba(0, 0, 0, 0.15); }
-
-        /* --- CSS ของ POPUP --- */
-        .modal-overlay {
-            display: none;
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background-color: rgba(0, 0, 0, 0.5); z-index: 1000;
-            justify-content: center; align-items: center;
-            backdrop-filter: blur(4px);
+        div:where(.swal2-container) .swal2-title {
+            font-weight: 600 !important;
+            color: #333 !important;
         }
-
-        .login-box {
-            background-color: white; width: 500px; padding: 40px;
-            border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            animation: popupFadeIn 0.3s ease-out;
-            position: relative;
-        }
-
-        .register-box {
-            background-color: white; width: 800px; padding: 40px 60px;
-            border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-            animation: popupFadeIn 0.3s ease-out;
-            position: relative;
-        }
-
-        @keyframes popupFadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .close-btn {
-            position: absolute; top: 15px; right: 20px;
-            font-size: 28px; font-weight: bold; color: #aaa;
-            cursor: pointer; transition: 0.2s;
-        }
-        .close-btn:hover { color: #ff4d4d; }
-
-        .header-text h3 { font-size: 16px; color: #555; text-align: center; margin-bottom: 5px; }
-        .header-text h1 { font-size: 24px; color: #356CB5; text-align: center; margin-bottom: 30px; }
-        .header-text h2 { font-size: 20px; color: #356CB5; text-align: center; margin-bottom: 20px; }
-
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-size: 14px; margin-bottom: 8px; }
-        .form-group input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; }
-
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-
-        .btn-submit {
-            background-color: #356CB5; color: white;
-            padding: 10px 25px; border: none; border-radius: 8px;
-            cursor: pointer; transition: 0.3s;
-        }
-        .btn-submit:hover { background-color: #285291; }
-
-        .link-switch { color: #666; cursor: pointer; }
-        .link-switch:hover { color: #356CB5; }
-
-        @media (max-width: 820px) {
-            .register-box { width: 95%; padding: 20px; }
-            .login-box { width: 90%; }
-            .form-grid { grid-template-columns: 1fr; }
+        div:where(.swal2-container) .swal2-html-container {
+            font-weight: 400 !important;
+            color: #666 !important;
         }
     </style>
 </head>
 <body>
 
-    <div class="main-content">
-        <h1>Onin Shop Stock</h1>
-        <p>ระบบบริหารจัดการสต็อกร้านของชำ</p>
+    <div class="main-content" style="text-align: center;">
+        <h1 style="color: #356CB5; font-size: 48px;">Onin Shop Stock</h1>
+        <p style="font-size: 24px; margin-bottom: 20px;">ระบบบริหารจัดการสต็อกร้านของชำ</p>
         <button class="btn-start" onclick="openModal('login')">เริ่มต้นใช้งาน</button>
     </div>
 
-    <!-- ------------------ LOGIN MODAL ------------------ -->
     <div class="modal-overlay" id="loginModal">
         <div class="login-box">
             <span class="close-btn" onclick="closeAllModals()">&times;</span>
-            <div class="header-text">
-                <h3>WELCOME TO</h3>
-                <h1>Onin Shop Stock</h1>
+            
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h3 style="margin: 0; color: #7f8c8d; font-weight: 400; font-size: 20px;">ยินดีต้อนรับสู่</h3>
+                <h1 style="margin: 5px 0 0 0; color: #356CB5; font-size: 32px; font-weight: 600;">Onin Shop Stock</h1>
             </div>
-
+            
             <form action="login.php" method="POST">
                 <div class="form-group">
-                    <label>ชื่อผู้ใช้งาน</label>
-                    <input type="text" name="username" id="username" placeholder="กรุณากรอก ชื่อผู้ใช้งาน" required>
+                    <input type="text" name="username" placeholder="ชื่อผู้ใช้งาน" required>
                 </div>
                 <div class="form-group">
-                    <label>รหัสผ่าน</label>
-                    <input type="password" name="password" id="password" placeholder="กรุณากรอก รหัสผ่าน" required>
+                    <input type="password" name="password" placeholder="รหัสผ่าน" required>
                 </div>
-
-                <div style="display: flex; justify-content: space-between;">
-                    <span class="link-switch" onclick="switchModal('register')">สมัครสมาชิกใหม่?</span>
-                    <button type="submit" class="btn-submit">เข้าสู่ระบบ</button>
-                </div>
+                <span class="link-switch" onclick="switchModal('register')">ยังไม่มีบัญชี? สมัครสมาชิก</span>
+                <button type="submit" class="btn-submit">เข้าสู่ระบบ</button>
             </form>
         </div>
     </div>
 
-    <!-- ------------------ REGISTER MODAL ------------------ -->
     <div class="modal-overlay" id="registerModal">
         <div class="register-box">
             <span class="close-btn" onclick="closeAllModals()">&times;</span>
-
-            <div class="header-text">
-                <h1>สมัครสมาชิก</h1>
-                <h2>Onin Shop Stock</h2>
-            </div>
+            <h2 style="text-align:center; color:#356CB5; margin-bottom:20px;">สมัครสมาชิก</h2>
 
             <form action="register.php" method="POST">
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label>ชื่อ-นามสกุล</label>
-                        <input type="text" name="fullname" required>
-                    </div>
-                    <div class="form-group">
-                        <label>เบอร์โทรศัพท์</label>
-                        <input type="tel" name="phone" required>
-                    </div>
-                    <div class="form-group">
-                        <label>ชื่อผู้ใช้งาน</label>
-                        <input type="text" name="username" required>
-                    </div>
-                    <div class="form-group">
-                        <label>รหัสผ่าน</label>
-                        <input type="password" name="password" required>
-                    </div>
-                    <div class="form-group">
-                        <label>อีเมล</label>
-                        <input type="email" name="email" required>
-                    </div>
-                    <div class="form-group">
-                        <label>ยืนยันรหัสผ่าน</label>
-                        <input type="password" name="confirm_password" required>
-                    </div>
+                    <div class="form-group"><input type="text" name="fullname" placeholder="ชื่อ-นามสกุล" required></div>
+                    <div class="form-group"><input type="tel" name="phone" placeholder="เบอร์โทรศัพท์" required></div>
+                    <div class="form-group"><input type="email" name="email" placeholder="อีเมล" required></div>
+                    <div class="form-group"><input type="text" name="username" placeholder="ตั้งชื่อผู้ใช้งาน" required></div>
+                    <div class="form-group"><input type="password" name="password" placeholder="รหัสผ่าน" required></div>
+                    <div class="form-group"><input type="password" name="confirm_password" placeholder="ยืนยันรหัสผ่าน" required></div>
                 </div>
-
-                <div style="display:flex; justify-content: flex-end; gap: 20px; margin-top: 20px;">
-                    <span class="link-switch" onclick="switchModal('login')">กลับไปเข้าสู่ระบบ</span>
-                    <button type="submit" class="btn-submit">สมัครสมาชิก</button>
-                </div>
+                <span class="link-switch" onclick="switchModal('login')">มีบัญชีแล้ว? เข้าสู่ระบบ</span>
+                <button type="submit" class="btn-submit">ยืนยันการสมัคร</button>
             </form>
         </div>
     </div>
@@ -254,9 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             closeAllModals();
             document.getElementById(type + 'Modal').style.display = 'flex';
         }
-        function switchModal(to) {
-            openModal(to);
-        }
+        function switchModal(to) { openModal(to); }
         function closeAllModals() {
             document.getElementById('loginModal').style.display = 'none';
             document.getElementById('registerModal').style.display = 'none';
@@ -265,7 +114,5 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             if (event.target.className === 'modal-overlay') { closeAllModals(); }
         }
     </script>
-    
-
 </body>
 </html>

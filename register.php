@@ -1,39 +1,43 @@
 <?php
-include 'db.php';
+session_start();
+require_once "db.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-
     $fullname = $_POST['fullname'];
     $phone = $_POST['phone'];
-    $username = $_POST['username'];
     $email = $_POST['email'];
+    $username = trim($_POST['username']);
     $password = $_POST['password'];
-    $confirm = $_POST['confirm_password'];
+    $confirm_password = $_POST['confirm_password'];
 
-    // ถ้ารหัสไม่ตรงกัน
-    if ($password !== $confirm) {
-        echo "<script>alert('รหัสผ่านไม่ตรงกัน'); window.location='index.php';</script>";
+    // 1. เช็ครหัสผ่านตรงกันไหม
+    if ($password !== $confirm_password) {
+        echo "<script>alert('รหัสผ่านยืนยันไม่ตรงกัน'); window.location='index.php';</script>";
         exit();
     }
 
-    // เข้ารหัสรหัสผ่าน
-    $hash = password_hash($password, PASSWORD_DEFAULT);
+    // 2. เช็คว่ามี Username นี้หรือยัง
+    $check = $conn->prepare("SELECT id FROM users WHERE username = ?");
+    $check->bind_param("s", $username);
+    $check->execute();
+    $result = $check->get_result();
 
-    // ตรวจสอบชื่อผู้ใช้ซ้ำ
-    $check = $conn->query("SELECT id FROM users WHERE username='$username'");
-    if ($check->num_rows > 0) {
-        echo "<script>alert('ชื่อผู้ใช้งานนี้ถูกใช้แล้ว'); window.location='index.php';</script>";
+    if ($result->num_rows > 0) {
+        echo "<script>alert('ชื่อผู้ใช้นี้มีคนใช้แล้ว กรุณาใช้ชื่ออื่น'); window.location='index.php';</script>";
         exit();
     }
 
-    // บันทึกข้อมูล
-    $sql = "INSERT INTO users (fullname, phone, username, email, password)
-            VALUES ('$fullname', '$phone', '$username', '$email', '$hash')";
+    // 3. บันทึกข้อมูล (เข้ารหัสรหัสผ่าน + กำหนด role เริ่มต้นเป็น staff)
+    $password_hashed = password_hash($password, PASSWORD_DEFAULT);
+    $default_role = 'staff'; // สมาชิกใหม่เป็นพนักงานธรรมดา
 
-    if ($conn->query($sql) === TRUE) {
-        echo "<script>alert('สมัครสมาชิกสำเร็จ!'); window.location='index.php';</script>";
+    $stmt = $conn->prepare("INSERT INTO users (fullname, phone, email, username, password, role) VALUES (?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param("ssssss", $fullname, $phone, $email, $username, $password_hashed, $default_role);
+
+    if ($stmt->execute()) {
+        echo "<script>alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ'); window.location='index.php';</script>";
     } else {
-        echo "<script>alert('เกิดข้อผิดพลาด'); window.location='index.php';</script>";
+        echo "<script>alert('เกิดข้อผิดพลาดในการสมัคร'); window.location='index.php';</script>";
     }
 }
 ?>

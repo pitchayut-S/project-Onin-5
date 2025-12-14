@@ -8,43 +8,65 @@ if (!isset($_SESSION['username'])) {
     exit();
 }
 
-// ตรวจสอบว่ามี id ถูกส่งมา
+// ตรวจสอบว่ามี id ถูกส่งมาหรือไม่
 if (!isset($_GET['id'])) {
-    echo "<script>alert('ไม่พบสินค้าที่ต้องการลบ'); window.location='product_list.php';</script>";
+    $_SESSION['swal'] = [
+        'icon' => 'error',
+        'title' => 'ไม่พบข้อมูล',
+        'text' => 'ไม่พบสินค้าที่ต้องการลบ'
+    ];
+    header("Location: product_list.php"); // เปลี่ยนเป็นชื่อไฟล์หน้ารายการสินค้าของคุณ
     exit();
 }
 
 $id = intval($_GET['id']);
 
-// ดึงข้อมูลสินค้าเพื่อตรวจสอบรูปภาพ
+// 1. ดึงข้อมูลสินค้าเพื่อเอารูปภาพมาลบ
 $stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows == 0) {
-    echo "<script>alert('ไม่พบข้อมูลสินค้า'); window.location='product_list.php';</script>";
+    $_SESSION['swal'] = [
+        'icon' => 'error',
+        'title' => 'ผิดพลาด',
+        'text' => 'ไม่พบข้อมูลสินค้าในระบบ'
+    ];
+    header("Location: product_list.php");
     exit();
 }
 
 $product = $result->fetch_assoc();
 $image_file = $product['image'];
 
-// ลบข้อมูลออกจากฐานข้อมูล
+// 2. ลบข้อมูลออกจากฐานข้อมูล
 $delete = $conn->prepare("DELETE FROM products WHERE id = ?");
 $delete->bind_param("i", $id);
 
 if ($delete->execute()) {
-
-    // ลบรูปในโฟลเดอร์ uploads ถ้ามี
+    // 3. ลบไฟล์รูปภาพออกจากโฟลเดอร์ uploads (ถ้ามี)
     if (!empty($image_file) && file_exists("uploads/" . $image_file)) {
         unlink("uploads/" . $image_file);
     }
 
-    echo "<script>alert('ลบสินค้าเรียบร้อย!'); window.location='product_list.php';</script>";
-    exit();
+    // --- ส่วนที่ปรับปรุง: สร้าง Session สำหรับ SweetAlert ---
+    $_SESSION['swal'] = [
+        'icon' => 'success',
+        'title' => 'ลบสำเร็จ',
+        'text' => 'ลบสินค้าเรียบร้อยแล้ว'
+    ];
 
 } else {
-    echo "<script>alert('เกิดข้อผิดพลาด ไม่สามารถลบสินค้าได้'); window.location='product_list.php';</script>";
+    // กรณีลบไม่สำเร็จ
+    $_SESSION['swal'] = [
+        'icon' => 'error',
+        'title' => 'ผิดพลาด',
+        'text' => 'เกิดข้อผิดพลาด ไม่สามารถลบสินค้าได้'
+    ];
 }
+
+// 4. ดีดกลับไปหน้ารายการสินค้า
+header("Location: product_list.php"); // เปลี่ยนเป็นชื่อไฟล์หน้ารายการสินค้าของคุณ
+exit();
 ?>

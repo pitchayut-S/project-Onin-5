@@ -2,126 +2,332 @@
 session_start();
 require_once "db.php";
 
-// ตรวจสอบการล็อกอิน
+// เช็คสิทธิ์ Login
 if (!isset($_SESSION['username'])) {
     header("Location: index.php");
     exit();
 }
 
-$search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
-$products = [];
+// =========================================================
+// PART 1: ข้อมูลการ์ด 4 ใบ (Cards Data)
+// =========================================================
 
-// $base_sql = "SELECT id, product_code, name, category, unit, selling_price, quantity FROM products";
-// $order_by = " ORDER BY id DESC";
+// 1. ผลรวมสินค้า
+$sql_prod_count = "SELECT COUNT(*) as total_items FROM products";
+$total_products = $conn->query($sql_prod_count)->fetch_assoc()['total_items'];
 
-// if ($search_text !== "") {
-//     $like = "%" . $search_text . "%";
-//     $stmt = $conn->prepare($base_sql . " WHERE product_code LIKE ? OR name LIKE ? OR category LIKE ?" . $order_by);
-//     $stmt->bind_param("sss", $like, $like, $like);
-//     $stmt->execute();
-//     $products = $stmt->get_result();
-//     $stmt->close();
-// } else {
-//     $products = $conn->query($base_sql . $order_by);
-// }
+// 2. สินค้าคงเหลือทั้งหมด
+$sql_stock_sum = "SELECT SUM(quantity) as total_qty FROM products";
+$total_stock_qty = $conn->query($sql_stock_sum)->fetch_assoc()['total_qty'] ?? 0;
+
+// 3. ยอดขาย
+$sql_sales_all = "
+    SELECT SUM(t.amount * p.selling_price) as grand_total
+    FROM stock_transactions t
+    JOIN products p ON t.product_id = p.id
+    WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน'
+";
+$total_sales_all = $conn->query($sql_sales_all)->fetch_assoc()['grand_total'] ?? 0;
+
+$sql_sales_today = "
+    SELECT SUM(t.amount * p.selling_price) as today_total
+    FROM stock_transactions t
+    JOIN products p ON t.product_id = p.id
+    WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน' AND DATE(t.created_at) = CURDATE()
+";
+$total_sales_today = $conn->query($sql_sales_today)->fetch_assoc()['today_total'] ?? 0;
+
+// 4. สินค้าใกล้หมด
+$sql_low = "SELECT COUNT(*) as low_count FROM products WHERE quantity <= 10";
+$low_stock_count = $conn->query($sql_low)->fetch_assoc()['low_count'];
+
+
+// =========================================================
+// PART 2: ข้อมูลกราฟและตาราง (Graph & Activity Data)
+// =========================================================
+
+// 5. กราฟสัดส่วนหมวดหมู่
+$sql_cat_chart = "
+    SELECT c.category_name, COUNT(p.id) as count
+    FROM products p
+    LEFT JOIN product_category c ON p.category = c.id
+    GROUP BY p.category
+";
+$res_cat = $conn->query($sql_cat_chart);
+$cat_labels = [];
+$cat_data = [];
+while($row = $res_cat->fetch_assoc()) {
+    $cat_labels[] = $row['category_name'] ?? 'ไม่ระบุ';
+    $cat_data[] = $row['count'];
+}
+
+// 6. ความเคลื่อนไหวล่าสุด (5 รายการ)
+$sql_recent = "
+    SELECT t.*, p.product_code, p.name 
+    FROM stock_transactions t
+    JOIN products p ON t.product_id = p.id
+    ORDER BY t.created_at DESC LIMIT 5
+";
+$res_recent = $conn->query($sql_recent);
+
+// 7. สินค้าใกล้หมดอายุ (ภายใน 30 วัน)
+$sql_exp = "
+    SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left 
+    FROM products 
+    WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
+    ORDER BY exp_date ASC LIMIT 5
+";
+$res_exp = $conn->query($sql_exp);
 ?>
 
 <!DOCTYPE html>
 <html lang="th">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สินค้า - Onin Shop Stock</title>
+    <title>Dashboard - Onin Shop</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 
     <style>
-        /* กล่องค้นหา + ตาราง */
-        .content-container { padding: 30px; }
-        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; color: #333; }
-        .search-box {
-            background: #fff;
-            padding: 18px 20px;
-            border-radius: 10px;
-            display: flex;
-            gap: 10px;
+        .content-container { padding: 30px; font-family: 'Prompt', sans-serif; }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 25px; color: #2c3e50; }
+
+        /* --- Grid Layout การ์ด 4 ใบ --- */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        /* Card Design */
+        .stat-card {
+            background: #fff; border-radius: 12px; overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
+            display: flex; flex-direction: column; height: 170px; /* เพิ่มความสูงการ์ดรวมนิดนึง */
+            transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+
+        .stat-content { padding: 20px; flex: 1; }
+        .stat-title { font-size: 18px; font-weight: 700; color: #555; margin-bottom: 5px; }
+        .stat-value { font-size: 24px; font-weight: 600; color: #333; }
+        .stat-sub { font-size: 14px; color: #888; }
+        
+        /* --- ปรับแต่งปุ่ม Footer ให้สูงขึ้น --- */
+        .stat-footer {
+            padding: 10px 24px; /* เพิ่ม Padding บนล่าง */
+            color: white; 
+            text-decoration: none; 
+            font-size: 15px; /* ขยายฟอนต์นิดนึง */
+            font-weight: 500;
+            display: flex; 
+            justify-content: space-between; 
             align-items: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-            margin-bottom: 16px;
         }
-        .search-box input {
-            flex: 1;
-            border: none;
-            background: #eef2f6;
-            padding: 12px 14px;
-            border-radius: 8px;
-            font-size: 14px;
-            outline: none;
+        .bg-blue { background-color: #1a237e; }
+        .bg-gold { background-color: #b7950b; }
+        .bg-green { background-color: #009900; }
+        .bg-red { background-color: #c62828; }
+
+        /* --- Grid ส่วนล่าง --- */
+        .lower-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
         }
-        .btn-search,
-        .btn-reset {
-            border: none;
-            cursor: pointer;
-            border-radius: 8px;
-            padding: 11px 18px;
-            font-weight: 600;
-            font-size: 14px;
+        @media (max-width: 992px) { .lower-section { grid-template-columns: 1fr; } }
+
+        .dash-box {
+            background: #fff; border-radius: 14px; padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;
+            margin-bottom: 20px;
         }
-        .btn-search { background: #356CB5; color: #fff; display: inline-flex; align-items: center; gap: 8px; }
-        .btn-search:hover { background: #285291; }
-        .btn-reset { background: #e7ebf0; color: #333; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
-        .btn-reset:hover { background: #d8dde4; }
-        .table-container {
-            background: #fff;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-            overflow-x: auto;
+        .box-header {
+            font-size: 16px; font-weight: 600; color: #2c3e50; margin-bottom: 15px;
+            border-bottom: 1px solid #eee; padding-bottom: 10px;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        table { width: 100%; border-collapse: collapse; min-width: 720px; }
-        th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid #eef1f4; }
-        th { background: #f3f6fb; color: #333; font-weight: 600; }
-        tr:hover td { background: #f9fbff; }
-        .badge {
-            display: inline-block;
-            padding: 6px 10px;
-            border-radius: 12px;
-            background: #e7f1ff;
-            color: #356CB5;
-            font-weight: 600;
-            font-size: 12px;
+
+        .mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+        .mini-table th { text-align: left; color: #888; padding: 8px; border-bottom: 1px solid #eee; font-weight: 500; }
+        .mini-table td { padding: 12px 8px; border-bottom: 1px solid #f9f9f9; color: #444; }
+        
+        .badge-mini { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+        .b-in { background: #e8f8f5; color: #27ae60; }
+        .b-out { background: #fdedec; color: #c0392b; }
+
+        .warn-item {
+            padding: 10px 0; border-bottom: 1px solid #f5f5f5; display: flex; justify-content: space-between; font-size: 14px;
         }
-        .stock-ok { color: #1b9c5a; background: #e6f6ed; }
-        .stock-low { color: #c0392b; background: #fdecea; }
+        .warn-days { color: #e74c3c; font-weight: bold; font-size: 12px; background: #ffebee; padding: 2px 8px; border-radius: 10px; }
     </style>
 </head>
+
 <body>
-    <?php include "sidebar.php"; ?>
 
-    <div class="main-content">
-        <div class="top-navbar">
-            <div class="nav-left">
-                <i class="fa-solid fa-bars"></i>
+<?php include "sidebar.php"; ?>
+
+<div class="main-content">
+    <?php include "topbar.php"; ?>
+
+    <div class="content-container">
+
+        <div class="page-title">Dashboard ภาพรวม</div>
+
+        <div class="dashboard-grid">
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-title">ผลรวมสินค้า</div>
+                    <div class="stat-value">จำนวน <?= number_format($total_products) ?> สินค้า</div>
+                    <div class="stat-sub">รายการสินค้าทั้งหมดในระบบ</div>
+                </div>
+                <a href="product_list.php" class="stat-footer bg-blue">
+                    <span>ดูรายการสินค้า</span> <i class="fa-solid fa-chevron-right"></i>
+                </a>
             </div>
-            <div class="nav-right">
-                <img src="img/profile.png" alt="Profile">
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-title">สินค้าคงเหลือ</div>
+                    <div class="stat-value">จำนวน <?= number_format($total_stock_qty) ?> ชิ้น</div>
+                    <div class="stat-sub">นับรวมทุกรายการ</div>
+                </div>
+                <a href="product_Stock.php" class="stat-footer bg-gold">
+                    <span>เช็คสต๊อก</span> <i class="fa-solid fa-chevron-right"></i>
+                </a>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-title">ยอดขายทั้งหมด</div>
+                    <div class="stat-value">รวม <?= number_format($total_sales_all) ?> บาท</div>
+                    <div class="stat-sub" style="color:#009900;">
+                        วันนี้ <?= number_format($total_sales_today) ?> บาท
+                    </div>
+                </div>
+                <a href="ProductPoppular.php" class="stat-footer bg-green">
+                    <span>ดูเพิ่มเติม</span> <i class="fa-solid fa-chevron-right"></i>
+                </a>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-content">
+                    <div class="stat-title">สินค้าใกล้หมด / ค้างสต็อก</div>
+                    <div class="stat-value">จำนวน <?= number_format($low_stock_count) ?> ชิ้น</div>
+                    <div class="stat-sub" style="color:#c62828;">รายการที่เหลือน้อยกว่า 10</div>
+                </div>
+                <a href="product_Stock.php?filter=lowstock" class="stat-footer bg-red">
+                    <span>ดูเพิ่มเติม</span> <i class="fa-solid fa-chevron-right"></i>
+                </a>
             </div>
         </div>
 
-        <div class="content-container">
-            <div class="page-title">Dashboard</div>
+        <div class="lower-section">
+            
+            <div class="dash-box">
+                <div class="box-header">
+                    <span><i class="fa-solid fa-clock-rotate-left"></i> ความเคลื่อนไหวล่าสุด (Recent Activity)</span>
+                    <a href="ReportStock.php" style="font-size:12px; color:#3498db; text-decoration:none;">ดูทั้งหมด</a>
+                </div>
+                
+                <table class="mini-table">
+                    <thead>
+                        <tr>
+                            <th>เวลา</th>
+                            <th>User</th>
+                            <th>สินค้า</th>
+                            <th>สถานะ</th>
+                            <th>จำนวน</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    <?php if ($res_recent->num_rows > 0): ?>
+                        <?php while($row = $res_recent->fetch_assoc()): 
+                            $isAdd = ($row['type']=='add');
+                        ?>
+                        <tr>
+                            <td><?= date("d/m H:i", strtotime($row['created_at'])) ?></td>
+                            <td>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <i class="fa-solid fa-user-circle" style="color:#ccc;"></i>
+                                    <?= htmlspecialchars($row['username'] ?? 'System') ?>
+                                </div>
+                            </td>
+                            <td><?= $row['name'] ?></td>
+                            <td>
+                                <?php if($isAdd): ?>
+                                    <span class="badge-mini b-in">เข้า</span>
+                                <?php else: ?>
+                                    <span class="badge-mini b-out">ออก</span>
+                                <?php endif; ?>
+                            </td>
+                            <td style="font-weight:bold;"><?= $row['amount'] ?></td>
+                        </tr>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <tr><td colspan="5" style="text-align:center; color:#999;">ยังไม่มีรายการเคลื่อนไหว</td></tr>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
 
-            <form class="search-box" method="get" action="product.php">
-                <input type="text" name="search" placeholder="พิมพ์เพื่อค้นหาสินค้า (รหัส / ชื่อ / ประเภท)" value="<?= htmlspecialchars($search_text, ENT_QUOTES, 'UTF-8') ?>">
-                <button type="submit" class="btn-search"><i class="fa-solid fa-magnifying-glass"></i> ค้นหา</button>
-                <?php if ($search_text !== ""): ?>
-                    <a class="btn-reset" href="product.php"><i class="fa-solid fa-rotate-left"></i> ล้างการค้นหา</a>
-                <?php endif; ?>
-            </form>
-            <div> นี่คือหน้า Dashboard</div>
+            <div>
+                <div class="dash-box">
+                    <div class="box-header"><span><i class="fa-solid fa-chart-pie"></i> สัดส่วนสินค้าตามหมวด</span></div>
+                    <div style="height:200px; width:100%;">
+                        <canvas id="catChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="dash-box">
+                    <div class="box-header" style="color:#c0392b;">
+                        <span><i class="fa-solid fa-hourglass-half"></i> ใกล้หมดอายุ (30 วัน)</span>
+                    </div>
+                    
+                    <?php if($res_exp->num_rows > 0): ?>
+                        <?php while($e = $res_exp->fetch_assoc()): ?>
+                            <div class="warn-item">
+                                <span><?= $e['name'] ?></span>
+                                <span class="warn-days">อีก <?= $e['days_left'] ?> วัน</span>
+                            </div>
+                        <?php endwhile; ?>
+                    <?php else: ?>
+                        <div style="text-align:center; color:#999; padding:10px;">ไม่มีสินค้าใกล้หมดอายุ</div>
+                    <?php endif; ?>
+                </div>
+            </div>
 
         </div>
+
     </div>
+</div>
+
+<script>
+    const ctx = document.getElementById('catChart');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: <?= json_encode($cat_labels) ?>,
+            datasets: [{
+                data: <?= json_encode($cat_data) ?>,
+                backgroundColor: [
+                    '#3498db', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e', '#1abc9c'
+                ],
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } }
+            }
+        }
+    });
+</script>
+
 </body>
 </html>
