@@ -27,8 +27,8 @@ $menu_config = [
         'link' => 'ProductPoppular.php',
     ],
     [
-        'name' => 'รายงาน',
-        'icon' => 'fa-solid fa-file-invoice',
+        'name' => 'ประวัติปรับสต๊อก',
+        'icon' => 'fa-solid fa-clock-rotate-left',
         'link' => 'ReportStock.php',
     ],
     ];
