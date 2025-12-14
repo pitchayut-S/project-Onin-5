@@ -93,8 +93,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // 3. เตรียมข้อมูลสำหรับแสดงผล
 // ------------------------------------------------------------------
 
-// ดึงหมวดหมู่สินค้า
-$cate_query = $conn->query("SELECT id, category_name FROM product_category ORDER BY category_name ASC");
+// ดึงหมวดหมู่สินค้า (เพิ่ม SELECT prefix)
+$cate_query = $conn->query("SELECT id, category_name, prefix FROM product_category ORDER BY category_name ASC");
 $categories = [];
 while ($cat = $cate_query->fetch_assoc()) {
     $categories[] = $cat;
@@ -284,24 +284,27 @@ $products = $conn->query($sql);
             
             <div class="form-grid">
                 <div class="form-group">
-                    <label>รหัสสินค้า</label>
-                    <input type="text" name="product_code" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>ชื่อสินค้า</label>
-                    <input type="text" name="name" class="form-control" required>
-                </div>
-
-                <div class="form-group">
-                    <label>ประเภทสินค้า</label>
-                    <select name="category" class="form-control" required>
-                        <option value="">-- เลือกประเภท --</option>
+                    <label>ประเภทสินค้า <span style="color:red;">*</span></label>
+                    <select name="category" id="add_category" class="form-control" onchange="genProductCode()" required>
+                        <option value="" data-prefix="">-- เลือกประเภท --</option>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat['id'] ?>"><?= $cat['category_name'] ?></option>
+                            <option value="<?= $cat['id'] ?>" data-prefix="<?= isset($cat['prefix']) ? $cat['prefix'] : '' ?>">
+                                <?= $cat['category_name'] ?>
+                            </option>
                         <?php endforeach; ?>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label>รหัสสินค้า <span style="color:red;">*</span></label>
+                    <input type="text" name="product_code" id="add_product_code" class="form-control" placeholder="เลือกประเภทเพื่อรับรหัส..." required>
+                </div>
                 
+                <div class="form-group">
+                    <label>ชื่อสินค้า <span style="color:red;">*</span></label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+
                 <div class="form-group">
                     <label>หน่วยนับ</label>
                     <select name="unit" class="form-control" required>
@@ -410,6 +413,32 @@ $products = $conn->query($sql);
 </div>
 
 <script>
+    // ฟังก์ชันสร้าง Prefix อัตโนมัติเมื่อเลือกประเภท
+    function genProductCode() {
+        const categorySelect = document.getElementById('add_category');
+        const codeInput = document.getElementById('add_product_code');
+        
+        // ดึงค่า data-prefix จาก option ที่เลือก
+        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+        const prefix = selectedOption.getAttribute('data-prefix');
+
+        if (prefix) {
+            let currentVal = codeInput.value;
+            // ถ้าช่องว่าง หรือยังไม่มีขีด ให้ใส่ Prefix ใหม่เลย
+            if (currentVal === "" || currentVal.indexOf('-') === -1) {
+                 codeInput.value = prefix + "-"; 
+            } else {
+                // ถ้ามีเลขแล้ว ให้เปลี่ยนแค่ Prefix ข้างหน้า
+                let parts = currentVal.split('-');
+                if (parts.length > 1) {
+                    codeInput.value = prefix + "-" + parts[1];
+                } else {
+                    codeInput.value = prefix + "-";
+                }
+            }
+        }
+    }
+
     function openAddModal() {
         document.getElementById('addModal').style.display = "block";
     }
@@ -444,11 +473,11 @@ $products = $conn->query($sql);
     function confirmDelete(id) {
         Swal.fire({
             title: 'ยืนยันการลบ?',
-            text: "คุข้อมูลนี้จะไม่สามารถกู้คืนได้",
+            text: "ข้อมูลนี้จะไม่สามารถกู้คืนได้",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#d33', // สีปุ่มลบ (แดง)
-            cancelButtonColor: '#3085d6', // สีปุ่มยกเลิก (ฟ้า)
+            confirmButtonColor: '#d33',
+            cancelButtonColor: '#3085d6',
             confirmButtonText: 'ลบข้อมูล',
             cancelButtonText: 'ยกเลิก'
         }).then((result) => {

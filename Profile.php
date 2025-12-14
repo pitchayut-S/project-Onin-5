@@ -201,10 +201,11 @@ th { background:#f3f6fb; font-weight:600; }
         <?php if (isset($_SESSION['msg_success'])) { echo "<script>Swal.fire({icon:'success', title:'สำเร็จ', text:'".$_SESSION['msg_success']."', timer:1500, showConfirmButton:false});</script>"; unset($_SESSION['msg_success']); } ?>
         <?php if (isset($_SESSION['msg_error'])) { echo "<script>Swal.fire({icon:'error', title:'ผิดพลาด', text:'".$_SESSION['msg_error']."'});</script>"; unset($_SESSION['msg_error']); } ?>
 
-        <form class="search-box" method="get">
-            <input type="text" name="search" placeholder="ค้นหา..." value="<?= htmlspecialchars($search_text) ?>">
-            <button type="submit" class="btn-search">ค้นหา</button>
-        </form>
+        <?php if ($_SESSION['role'] === 'admin'): ?>  <form class="search-box" method="get">
+        <input type="text" name="search" placeholder="ค้นหา..." value="<?= htmlspecialchars($search_text) ?>">
+        <button type="submit" class="btn-search">ค้นหา</button>
+    </form>
+        <?php endif; ?>
 
         <table>
             <thead>
