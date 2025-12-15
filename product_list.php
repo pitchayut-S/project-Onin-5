@@ -57,8 +57,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $category      = $_POST['category'];
         $unit          = $_POST['unit']; // รับค่าหน่วยนับที่แก้ไข
         $quantity      = $_POST['quantity'];
+        $cost          = $_POST['cost'];
         $exp_date      = $_POST['exp_date'];
-        
+        $selling_price = $_POST['selling_price'];
         $old_image     = $_POST['old_image']; 
         $image_name    = $old_image;
 
@@ -76,8 +77,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // อัปเดตข้อมูล (เพิ่ม unit เข้าไปใน SQL)
-        $stmt = $conn->prepare("UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, exp_date=?, image=? WHERE id=?");
-        $stmt->bind_param("ssssissi", $product_code, $name, $category, $unit, $quantity, $exp_date, $image_name, $id);
+        $stmt = $conn->prepare("UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?");
+        $stmt->bind_param("ssssissi", $product_code, $name, $category, $unit, $quantity,$selling_price, $cost, $exp_date, $image_name, $id);
 
         if ($stmt->execute()) {
             $_SESSION['msg_success'] = "แก้ไขข้อมูลสำเร็จ";
@@ -223,12 +224,14 @@ $products = $conn->query($sql);
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th>ลำดับ</th>
                         <th>รหัสสินค้า</th>
                         <th>รูปภาพ</th>
                         <th>ชื่อสินค้า</th>
                         <th>ประเภท</th>
                         <th>หน่วย</th> <th>คงเหลือ</th>
+                        <th>ราคาทุน</th>
+                        <th>ราคาขาย</th>
                         <th>วันหมดอายุ</th>
                         <th>จัดการ</th>
                     </tr>
@@ -240,7 +243,7 @@ $products = $conn->query($sql);
                         $stock_label = $row['quantity'] > 0 ? "มีสต๊อก" : "หมด";
                     ?>
                     <tr>
-                        <td><?= $i++ ?></td>
+                        <td style="text-align:center;"><?= $i++ ?></td>
                         <td><?= $row['product_code'] ?></td>
                         <td>
                             <?php if ($row['image']): ?>
@@ -252,6 +255,8 @@ $products = $conn->query($sql);
                         <td><?= $row['name'] ?></td>
                         <td><?= $row['category_name'] ?></td>
                         <td><?= $row['unit'] ?></td> <td><span class="badge <?= $stock_class ?>"><?= $row['quantity'] ?> | <?= $stock_label ?></span></td>
+                        <td><?= number_format($row['cost'], 2) ?> บาท</td>
+                        <td><?= number_format($row['selling_price'], 2) ?> บาท</td>
                         <td><?= $row['exp_date'] ?></td>
                         <td>
                             <button class="btn-edit" onclick='openEditModal(<?php echo json_encode($row); ?>)'>
@@ -363,7 +368,11 @@ $products = $conn->query($sql);
             <div class="form-grid">
                 <div class="form-group">
                     <label>รหัสสินค้า</label>
-                    <input type="text" id="edit_product_code" name="product_code" class="form-control" required>
+                    <input type="text" id="edit_product_code" name="product_code" 
+                        readonly 
+                        style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" 
+                        required>
+                    <small style="color:red; font-size:12px;">* รหัสสินค้าไม่สามารถแก้ไขได้</small>
                 </div>
                 <div class="form-group">
                     <label>ชื่อสินค้า</label>
@@ -388,6 +397,16 @@ $products = $conn->query($sql);
                             <option value="<?= $u ?>"><?= $u ?></option>
                         <?php endforeach; ?>
                     </select>
+                </div>
+
+                <div class="form-group">
+                    <label>ราคาทุน</label>
+                    <input type="number" step="0.01" id="edit_cost" name="cost" class="form-control">
+                </div>
+
+                 <div class="form-group">
+                    <label>ราคาขาย</label>
+                    <input type="number" step="0.01" id="edit_selling_price" name="selling_price" class="form-control">
                 </div>
 
                 <div class="form-group">
@@ -452,6 +471,8 @@ $products = $conn->query($sql);
         document.getElementById('edit_quantity').value = data.quantity;
         document.getElementById('edit_exp_date').value = data.exp_date;
         document.getElementById('edit_category').value = data.category;
+        document.getElementById('edit_selling_price').value = data.selling_price;
+        document.getElementById('edit_cost').value = data.cost;
         
         // เซ็ตค่าหน่วยนับให้ตรงกับข้อมูลเดิม
         document.getElementById('edit_unit').value = data.unit; 
