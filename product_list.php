@@ -55,11 +55,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $product_code  = $_POST['product_code'];
         $name          = $_POST['name'];
         $category      = $_POST['category'];
-        $unit          = $_POST['unit']; // รับค่าหน่วยนับที่แก้ไข
-        $quantity      = $_POST['quantity'];
-        $cost          = $_POST['cost'];
+        $unit          = $_POST['unit']; 
+        $quantity      = intval($_POST['quantity']); // แปลงเป็น int เพื่อความชัวร์
+        $cost          = floatval($_POST['cost']);   // แปลงเป็น float เพื่อความชัวร์
         $exp_date      = $_POST['exp_date'];
-        $selling_price = $_POST['selling_price'];
+        $selling_price = floatval($_POST['selling_price']); // แปลงเป็น float เพื่อความชัวร์
         $old_image     = $_POST['old_image']; 
         $image_name    = $old_image;
 
@@ -76,15 +76,32 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        // อัปเดตข้อมูล (เพิ่ม unit เข้าไปใน SQL)
-        $stmt = $conn->prepare("UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?");
-        $stmt->bind_param("ssssissi", $product_code, $name, $category, $unit, $quantity,$selling_price, $cost, $exp_date, $image_name, $id);
+        // อัปเดตข้อมูล
+        $sql = "UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?";
+        $stmt = $conn->prepare($sql);
+        
+        // แก้ไขบรรทัดนี้: Type definition string ต้องมี 10 ตัวอักษร ตรงกับจำนวนตัวแปร 10 ตัว
+        // s=string, i=int, d=double/float
+        $stmt->bind_param("ssssiddssi", 
+            $product_code, 
+            $name, 
+            $category, 
+            $unit, 
+            $quantity, 
+            $selling_price, 
+            $cost, 
+            $exp_date, 
+            $image_name, 
+            $id
+        );
 
         if ($stmt->execute()) {
             $_SESSION['msg_success'] = "แก้ไขข้อมูลสำเร็จ";
         } else {
-            $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการแก้ไข";
+            $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการแก้ไข: " . $stmt->error;
         }
+        
+        $stmt->close(); // อย่าลืมปิด statement
         header("Location: product_list.php");
         exit();
     }
@@ -464,7 +481,6 @@ $products = $conn->query($sql);
 
     function openEditModal(data) {
         document.getElementById('editModal').style.display = "block";
-
         document.getElementById('edit_id').value = data.id;
         document.getElementById('edit_product_code').value = data.product_code;
         document.getElementById('edit_name').value = data.name;
@@ -473,7 +489,6 @@ $products = $conn->query($sql);
         document.getElementById('edit_category').value = data.category;
         document.getElementById('edit_selling_price').value = data.selling_price;
         document.getElementById('edit_cost').value = data.cost;
-        
         // เซ็ตค่าหน่วยนับให้ตรงกับข้อมูลเดิม
         document.getElementById('edit_unit').value = data.unit; 
 
