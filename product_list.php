@@ -20,34 +20,95 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     
     // --- กรณี: เพิ่มสินค้าใหม่ (ADD) ---
     if (isset($_POST['action']) && $_POST['action'] === 'add') {
-        $product_code  = $_POST['product_code'];
-        $name          = $_POST['name'];
-        $category      = $_POST['category'];
-        $unit          = $_POST['unit']; // รับค่าหน่วยนับ
-        $cost          = $_POST['cost'];
-        $selling_price = $_POST['selling_price'];
-        $mfg_date      = $_POST['mfg_date'];
-        $exp_date      = $_POST['exp_date']; 
-        $quantity      = $_POST['quantity'];
+    // 1. รับค่าจากฟอร์ม (ไม่ต้องรับ product_code แล้ว เพราะเราจะสร้างเอง)
+    $name          = trim($_POST['name']);
+    $category      = trim($_POST['category']);
+    $unit          = $_POST['unit'];
+    $cost          = floatval($_POST['cost']);          // แปลงเป็นทศนิยม
+    $selling_price = floatval($_POST['selling_price']); // แปลงเป็นทศนิยม
+    $mfg_date      = $_POST['mfg_date'];
+    $exp_date      = $_POST['exp_date']; 
+    $quantity      = intval($_POST['quantity']);        // แปลงเป็นจำนวนเต็ม
 
-        // อัปโหลดรูปภาพ
-        $image_name = "";
-        if (!empty($_FILES["image"]["name"])) {
-            $image_name = time() . "_" . basename($_FILES["image"]["name"]);
-            move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $image_name);
-        }
-
-        $stmt = $conn->prepare("INSERT INTO products (product_code, name, category, unit, cost, selling_price, mfg_date, exp_date, quantity, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssddsis", $product_code, $name, $category, $unit, $cost, $selling_price, $mfg_date, $exp_date, $quantity, $image_name);
-        
-        if ($stmt->execute()) {
-            $_SESSION['msg_success'] = "เพิ่มสินค้าเรียบร้อยแล้ว";
-        } else {
-            $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการเพิ่มสินค้า";
-        }
-        header("Location: product_list.php");
-        exit();
+    // ---------------------------------------------------------
+    // 🚀 ส่วนสร้างรหัสสินค้าอัตโนมัติ (Auto Generate Code)
+    // ---------------------------------------------------------
+    
+    // A. หา Prefix ของหมวดหมู่นี้ก่อน
+    $prefix = "PD"; // ค่าเริ่มต้น (กรณีหาไม่เจอ)
+    $stmt_cat = $conn->prepare("SELECT prefix FROM product_category WHERE category_name = ?");
+    $stmt_cat->bind_param("s", $category);
+    $stmt_cat->execute();
+    $res_cat = $stmt_cat->get_result();
+    if ($row_cat = $res_cat->fetch_assoc()) {
+        $prefix = $row_cat['prefix']; // ได้ค่าเช่น 'SN', 'DR'
     }
+    $stmt_cat->close();
+
+    // B. หาเลขรันล่าสุด ของ Prefix นี้
+    // ค้นหา product_code ที่ขึ้นต้นด้วย 'Prefix-' (เช่น 'SN-%')
+    $search_prefix = $prefix . "-%";
+    $stmt_last = $conn->prepare("SELECT product_code FROM products WHERE product_code LIKE ? ORDER BY id DESC LIMIT 1");
+    $stmt_last->bind_param("s", $search_prefix);
+    $stmt_last->execute();
+    $res_last = $stmt_last->get_result();
+
+    $next_number = 1; // เริ่มต้นที่ 1
+    if ($row_last = $res_last->fetch_assoc()) {
+        // ถ้าเจอตัวล่าสุด เช่น "SN-0005"
+        // ให้ตัด string เอาเฉพาะตัวเลขหลังขีด "-" มาบวก 1
+        $parts = explode("-", $row_last['product_code']);
+        if (isset($parts[1])) {
+            $next_number = intval($parts[1]) + 1;
+        }
+    }
+    $stmt_last->close();
+
+    // C. สร้างรหัสใหม่ (เติม 0 ข้างหน้าให้ครบ 4 หลัก)
+    // ผลลัพธ์จะเป็น: SN-0001, SN-0002 ...
+    $new_product_code = $prefix . "-" . str_pad($next_number, 4, "0", STR_PAD_LEFT);
+
+    // ---------------------------------------------------------
+
+    // 2. อัปโหลดรูปภาพ
+    $image_name = "";
+    if (!empty($_FILES["image"]["name"])) {
+        $ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
+        // ตั้งชื่อไฟล์รูปใหม่เป็น รหัสสินค้า.นามสกุล (เช่น SN-0001.jpg) เพื่อความเป็นระเบียบ
+        $image_name = $new_product_code . "_" . time() . "." . $ext;
+        move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $image_name);
+    }
+
+    // 3. บันทึกลงฐานข้อมูล (ใช้ $new_product_code ที่สร้างขึ้น)
+    $sql = "INSERT INTO products (product_code, name, category, unit, cost, selling_price, mfg_date, exp_date, quantity, image) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    
+    $stmt = $conn->prepare($sql);
+    // s=string, d=double(ทศนิยม), i=integer
+    // ลำดับ: code(s), name(s), cat(s), unit(s), cost(d), price(d), mfg(s), exp(s), qty(i), img(s)
+    $stmt->bind_param("ssssddssis", 
+        $new_product_code, 
+        $name, 
+        $category, 
+        $unit, 
+        $cost, 
+        $selling_price, 
+        $mfg_date, 
+        $exp_date, 
+        $quantity, 
+        $image_name
+    );
+    
+    if ($stmt->execute()) {
+        $_SESSION['msg_success'] = "เพิ่มสินค้าเรียบร้อย รหัสสินค้าคือ: " . $new_product_code;
+    } else {
+        $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $stmt->error;
+    }
+    
+    $stmt->close();
+    header("Location: product_list.php");
+    exit();
+}
 
     // --- กรณี: แก้ไขสินค้า (EDIT) ---
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
@@ -317,12 +378,12 @@ $products = $conn->query($sql);
                     </select>
                 </div>
 
-                <div class="form-group">
+                <!-- <div class="form-group">
                     <label>รหัสสินค้า <span style="color:red;">*</span></label>
                     <input type="text" name="product_code" id="add_product_code" class="form-control" placeholder="เลือกประเภทเพื่อรับรหัส..." required>
-                </div>
+                </div> -->
                 
-                <div class="form-group">
+                <div class="form-group" >
                     <label>ชื่อสินค้า <span style="color:red;">*</span></label>
                     <input type="text" name="name" class="form-control" required>
                 </div>
@@ -347,6 +408,11 @@ $products = $conn->query($sql);
                 </div>
 
                 <div class="form-group">
+                    <label>จำนวนเริ่มต้น</label>
+                    <input type="number" name="quantity" class="form-control" value="0">
+                </div>
+
+                <div class="form-group">
                     <label>วันที่ผลิต</label>
                     <input type="date" name="mfg_date" class="form-control">
                 </div>
@@ -355,10 +421,6 @@ $products = $conn->query($sql);
                     <input type="date" name="exp_date" class="form-control">
                 </div>
 
-                <div class="form-group">
-                    <label>จำนวนเริ่มต้น</label>
-                    <input type="number" name="quantity" class="form-control" value="0">
-                </div>
                 
                 <div class="form-group full-width">
                     <label>รูปภาพสินค้า</label>
