@@ -31,4 +31,9 @@ $menu_config = [
         'icon' => 'fa-solid fa-clock-rotate-left',
         'link' => 'ReportStock.php',
     ],
-    ];
+    [
+        'name' => 'ขายหน้าร้าน',
+        'icon' => 'fa-solid fa-cash-register',
+        'link' => 'pos.php',
+    ],
+];

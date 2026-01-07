@@ -73,11 +73,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     // 2. อัปโหลดรูปภาพ
     $image_name = "";
     if (!empty($_FILES["image"]["name"])) {
+        // 1. ดึงนามสกุลไฟล์ (เช่น .jpg, .png)
         $ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
-        // ตั้งชื่อไฟล์รูปใหม่เป็น รหัสสินค้า.นามสกุล (เช่น SN-0001.jpg) เพื่อความเป็นระเบียบ
-        $image_name = $new_product_code . "_" . time() . "." . $ext;
+        
+        // 2. ตั้งชื่อไฟล์ใหม่: ใช้รหัสสินค้า หรือ เวลา + สุ่มตัวเลข
+        // ตัวอย่างผลลัพธ์: PROD_1765632781.jpg
+        $image_name = "PROD_" . time() . "_" . rand(100,999) . "." . $ext;
+        
+        // 3. ย้ายไฟล์
         move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $image_name);
     }
+        // เช็คว่ามีชื่อไฟล์ และไฟล์นั้นมีอยู่จริงในเครื่อง Server หรือไม่
+    $img_path = "uploads/" . $row['image'];
+    if (!empty($row['image']) && file_exists($img_path)) {
+        // ถ้าเจอรูป ให้แสดงรูปนั้น
+        echo "<img src='$img_path'>";
+    } else {
+        // ถ้าไม่เจอ (404) หรือเป็นชื่อภาษาไทยที่พัง ให้แสดงกล่องเปล่า
+        echo "<div style='width:100px; height:100px; background:#eee; display:flex; align-items:center; justify-content:center; color:#999; border-radius:8px;'>No Img</div>";
+    }
+    
 
     // 3. บันทึกลงฐานข้อมูล (ใช้ $new_product_code ที่สร้างขึ้น)
     $sql = "INSERT INTO products (product_code, name, category, unit, cost, selling_price, mfg_date, exp_date, quantity, image) 
@@ -127,7 +142,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         // อัปโหลดรูปใหม่ (ถ้ามี)
         if (!empty($_FILES["image"]["name"])) {
             $ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
-            $new_img_name = uniqid("img_") . "." . $ext;
+            $new_img_name = "PROD_" . time() . "_" . rand(100,999) . "." . $ext;
             
             if (move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $new_img_name)) {
                 if (!empty($old_image) && file_exists("uploads/" . $old_image)) {
@@ -135,6 +150,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
                 $image_name = $new_img_name;
             }
+        }
+
+        // เช็คว่ามีชื่อไฟล์ และไฟล์นั้นมีอยู่จริงในเครื่อง Server หรือไม่
+        $img_path = "uploads/" . $row['image'];
+        if (!empty($row['image']) && file_exists($img_path)) {
+            // ถ้าเจอรูป ให้แสดงรูปนั้น
+            echo "<img src='$img_path'>";
+        } else {
+            // ถ้าไม่เจอ (404) หรือเป็นชื่อภาษาไทยที่พัง ให้แสดงกล่องเปล่า
+            echo "<div style='width:100px; height:100px; background:#eee; display:flex; align-items:center; justify-content:center; color:#999; border-radius:8px;'>No Img</div>";
         }
 
         // อัปเดตข้อมูล
