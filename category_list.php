@@ -169,8 +169,8 @@ $categories = $conn->query($sql);
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
-                        <th>Prefix</th>
+                        <th>ลำดับ</th>
+                        <th>รหัสสินค้า</th>
                         <th>ชื่อประเภทสินค้า</th>
                         <th>จัดการ</th>
                     </tr>

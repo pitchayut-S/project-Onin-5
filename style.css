@@ -392,3 +392,36 @@ th { background-color: #E0E0E0; font-weight: 600; color: #333; }
     display: inline-block;
 }
 .btn-confirm-logout:hover { background-color: #b0021f; }
+/* CSS สำหรับ Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 20px;
+    font-family: 'Prompt', sans-serif;
+}
+
+.pagination a {
+    color: #333;
+    padding: 8px 14px;
+    text-decoration: none; /* ✅ บรรทัดนี้คือตัวเอาเส้นใต้ออกครับ */
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    transition: 0.2s;
+    background: white;
+}
+.pagination a:hover {
+    background-color: #f1f1f1;
+    text-decoration: none; /* ย้ำอีกทีตอนเอาเมาส์ชี้ก็ไม่ต้องมีเส้น */
+}
+
+.pagination a.active {
+    background-color: #356CB5;
+    color: white;
+    border-color: #356CB5;
+}
+
+.pagination span {
+    padding: 8px 14px;
+    color: #999;
+}

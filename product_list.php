@@ -29,6 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $mfg_date      = $_POST['mfg_date'];
     $exp_date      = $_POST['exp_date']; 
     $quantity      = intval($_POST['quantity']);        // แปลงเป็นจำนวนเต็ม
+    $img_path      = "uploads/" . $row['image'];
 
     // ---------------------------------------------------------
     // 🚀 ส่วนสร้างรหัสสินค้าอัตโนมัติ (Auto Generate Code)
@@ -36,12 +37,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     
     // A. หา Prefix ของหมวดหมู่นี้ก่อน
     $prefix = "PD"; // ค่าเริ่มต้น (กรณีหาไม่เจอ)
-    $stmt_cat = $conn->prepare("SELECT prefix FROM product_category WHERE category_name = ?");
-    $stmt_cat->bind_param("s", $category);
+    $stmt_cat = $conn->prepare("SELECT prefix FROM product_category WHERE id = ?");
+    $stmt_cat->bind_param("i", $category);
     $stmt_cat->execute();
     $res_cat = $stmt_cat->get_result();
     if ($row_cat = $res_cat->fetch_assoc()) {
-        $prefix = $row_cat['prefix']; // ได้ค่าเช่น 'SN', 'DR'
+        $prefix = $row_cat['prefix']; 
     }
     $stmt_cat->close();
 
@@ -138,6 +139,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $selling_price = floatval($_POST['selling_price']); // แปลงเป็น float เพื่อความชัวร์
         $old_image     = $_POST['old_image']; 
         $image_name    = $old_image;
+        $img_path       = "uploads/" . $row['image'];
 
         // อัปโหลดรูปใหม่ (ถ้ามี)
         if (!empty($_FILES["image"]["name"])) {
@@ -197,22 +199,48 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 // 3. เตรียมข้อมูลสำหรับแสดงผล
 // ------------------------------------------------------------------
 
-// ดึงหมวดหมู่สินค้า (เพิ่ม SELECT prefix)
-$cate_query = $conn->query("SELECT id, category_name, prefix FROM product_category ORDER BY category_name ASC");
-$categories = [];
-while ($cat = $cate_query->fetch_assoc()) {
-    $categories[] = $cat;
+// 1. ตั้งค่า Pagination
+$limit = 20; // จำนวนรายการต่อหน้า
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$offset = ($page - 1) * $limit;
+
+// 2. เตรียมเงื่อนไข (Conditions) เก็บใส่ตัวแปรไว้ใช้ซ้ำ
+$search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
+$search_cat  = isset($_GET['cat']) ? $_GET['cat'] : ""; 
+
+$condition_sql = " WHERE 1=1 "; // เริ่มต้นเงื่อนไข
+
+if ($search_text !== "") {
+    $like = "%" . $conn->real_escape_string($search_text) . "%";
+    $condition_sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like')";
 }
 
-// ค้นหาและดึงสินค้า
-$search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
-$sql = "SELECT p.*, c.category_name FROM products p LEFT JOIN product_category c ON p.category = c.id";
-if ($search_text !== "") {
-    $like = "%".$conn->real_escape_string($search_text)."%";
-    $sql .= " WHERE p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like'";
+if ($search_cat !== "") {
+    $cat_safe = $conn->real_escape_string($search_cat);
+    $condition_sql .= " AND p.category = '$cat_safe'";
 }
-$sql .= " ORDER BY p.id DESC";
+
+// 3. Query รอบที่ 1: นับจำนวนสินค้าทั้งหมด (เพื่อคำนวณว่ามีกี่หน้า)
+$sql_count = "SELECT COUNT(*) as total FROM products p LEFT JOIN product_category c ON p.category = c.id" . $condition_sql;
+$query_count = $conn->query($sql_count);
+$row_count = $query_count->fetch_assoc();
+$total_rows = $row_count['total'];
+$total_pages = ceil($total_rows / $limit); // ปัดเศษขึ้น
+
+// 4. Query รอบที่ 2: ดึงข้อมูลจริง (ใส่ LIMIT)
+$sql = "SELECT p.*, c.category_name 
+        FROM products p 
+        LEFT JOIN product_category c ON p.category = c.id" 
+        . $condition_sql 
+        . " ORDER BY p.id DESC LIMIT $offset, $limit";
+
 $products = $conn->query($sql);
+
+// 5. ดึงหมวดหมู่สำหรับ Dropdown (เหมือนเดิม)
+$cat_result = $conn->query("SELECT * FROM product_category ORDER BY category_name ASC");
+$categories = [];
+while ($cat = $cat_result->fetch_assoc()) $categories[] = $cat;
 ?>
 
 <!DOCTYPE html>
@@ -315,12 +343,32 @@ $products = $conn->query($sql);
             </button>
         </div>
 
-        <form class="search-box" method="get" action="product_list.php">
-            <input type="text" name="search" placeholder="ค้นหา (รหัส / ชื่อ / ประเภทสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
-            <button type="submit" class="btn-search">ค้นหา</button>
-            <?php if ($search_text !== ""): ?>
-                <a href="product_list.php" class="btn-reset">ล้าง</a>
+       <form class="search-box" method="get" action="product_list.php" style="display: flex; gap: 10px; align-items: center;">
+    
+            <input type="text" name="search" placeholder="ระบุรหัส หรือ ชื่อสินค้า..." 
+                value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>"
+                style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; min-width: 250px;">
+            
+            <select name="cat" style="padding: 10px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer;">
+                <option value="">-- ทุกหมวดหมู่ --</option>
+                <?php 
+                // ใช้ Loop จากตัวแปร $categories ที่เตรียมไว้ข้างบน
+                foreach ($categories as $c) {
+                    // เช็คว่าถ้า ID ตรงกับที่เลือกไว้ ให้ใส่ selected
+                    $selected = ($search_cat == $c['id']) ? 'selected' : '';
+                    
+                    // Value ต้องส่งเป็น ID (เพราะใน DB เก็บ ID)
+                    echo '<option value="'.$c['id'].'" '.$selected.'>'.$c['category_name'].'</option>';
+                }
+                ?>
+            </select>
+            
+            <button type="submit" class="btn-search" style="padding: 10px 20px;">ค้นหา</button>
+            
+            <?php if ($search_text !== "" || $search_cat !== ""): ?>
+                <a href="product_list.php" class="btn-reset" style="padding: 10px 15px;">ล้าง</a>
             <?php endif; ?>
+            
         </form>
 
         <div style="overflow-x:auto;">
@@ -376,8 +424,50 @@ $products = $conn->query($sql);
                 <?php endif; ?>
                 </tbody>
             </table>
-        </div>
+            <?php if($total_pages > 1): ?>
+                <div class="pagination">
+                    
+                    <?php if($page > 1): ?>
+                        <a href="?page=1&search=<?= htmlspecialchars($search_text) ?>&cat=<?= htmlspecialchars($search_cat) ?>" title="หน้าแรก">
+                            <i class="fa-solid fa-angles-left"></i> หน้าแรก
+                        </a>
+                        <a href="?page=<?= $page-1 ?>&search=<?= htmlspecialchars($search_text) ?>&cat=<?= htmlspecialchars($search_cat) ?>" title="ย้อนกลับ">
+                            &laquo;
+                        </a>
+                    <?php endif; ?>
 
+                    <?php 
+                    $start_page = max(1, $page - 2);
+                    $end_page = min($total_pages, $page + 2);
+
+                    if($start_page > 1) echo '<span>...</span>'; 
+
+                    for ($i = $start_page; $i <= $end_page; $i++): 
+                    ?>
+                        <a href="?page=<?= $i ?>&search=<?= htmlspecialchars($search_text) ?>&cat=<?= htmlspecialchars($search_cat) ?>" 
+                        class="<?= ($page == $i) ? 'active' : '' ?>">
+                        <?= $i ?>
+                        </a>
+                    <?php endfor; ?>
+
+                    <?php if($end_page < $total_pages) echo '<span>...</span>'; ?>
+
+                    <?php if($page < $total_pages): ?>
+                        <a href="?page=<?= $page+1 ?>&search=<?= htmlspecialchars($search_text) ?>&cat=<?= htmlspecialchars($search_cat) ?>" title="ถัดไป">
+                            &raquo;
+                        </a>
+                        <a href="?page=<?= $total_pages ?>&search=<?= htmlspecialchars($search_text) ?>&cat=<?= htmlspecialchars($search_cat) ?>" title="หน้าสุดท้าย">
+                            หน้าสุดท้าย <i class="fa-solid fa-angles-right"></i>
+                        </a>
+                    <?php endif; ?>
+
+                </div>
+
+                <div style="text-align:center; color:#666; font-size:12px; margin-top:10px;">
+                    หน้า <?= $page ?> จาก <?= $total_pages ?> (ทั้งหมด <?= number_format($total_rows) ?> รายการ)
+                </div>
+                <?php endif; ?>
+            </div>
     </div>
 </div>
 
@@ -393,7 +483,7 @@ $products = $conn->query($sql);
             <div class="form-grid">
                 <div class="form-group">
                     <label>ประเภทสินค้า <span style="color:red;">*</span></label>
-                    <select name="category" id="add_category" class="form-control" onchange="genProductCode()" required>
+                    <select name="category" id="add_category" class="form-control" >
                         <option value="" data-prefix="">-- เลือกประเภท --</option>
                         <?php foreach ($categories as $cat): ?>
                             <option value="<?= $cat['id'] ?>" data-prefix="<?= isset($cat['prefix']) ? $cat['prefix'] : '' ?>">
