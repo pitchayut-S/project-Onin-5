@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $username = trim($_POST['username']);
         $fullname = trim($_POST['fullname']);
         $email = trim($_POST['email']); 
-        $phone = trim($_POST['phone']); // ใช้ชื่อ phone ตามฐานข้อมูล
+        $phone = trim($_POST['phone']); 
         
         $role = $_POST['role'];
         $status = $_POST['status'];
@@ -26,20 +26,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         $password = $_POST['password'];
         $confirm_password = $_POST['confirm_password'];
 
-        // เช็คยืนยันรหัสผ่าน
+        // เช็คยืนยันรหัสผ่าน (เฉพาะกรณีมีการกรอกรหัสผ่าน)
         if (!empty($password) && $password !== $confirm_password) {
             $_SESSION['msg_error'] = "รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน";
             header("Location: Profile.php"); exit();
         }
 
-        // Security: ถ้าไม่ใช่ Admin บังคับ Role/Status เดิม
+        // Security: ถ้าไม่ใช่ Admin บังคับ Role/Status เดิม (ป้องกัน Staff แอบเปลี่ยนตัวเองเป็น Admin)
         if ($_SESSION['role'] !== 'admin') {
             $role = 'staff'; 
             $status = 'active'; 
         }
 
         if ($id == 0) {
-            // INSERT
+            // -------------------------------------------------------
+            // INSERT (เพิ่มผู้ใช้ใหม่) - Admin ทำได้คนเดียว
+            // -------------------------------------------------------
             if ($_SESSION['role'] !== 'admin') {
                 $_SESSION['msg_error'] = "คุณไม่มีสิทธิ์เพิ่มผู้ใช้งานใหม่";
             } else {
@@ -48,7 +50,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $_SESSION['msg_error'] = "ชื่อผู้ใช้นี้มีอยู่ในระบบแล้ว";
                 } else {
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
-                    // ใช้ชื่อคอลัมน์ตาม onin_shop.sql: phone, email, status (ที่เพิ่งเพิ่ม)
                     $stmt = $conn->prepare("INSERT INTO users (username, password, fullname, email, phone, role, status) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     $stmt->bind_param("sssssss", $username, $hashed_password, $fullname, $email, $phone, $role, $status);
                     
@@ -60,11 +61,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                 }
             }
         } else {
-            // UPDATE
-            // อนุญาตให้แก้ไขถ้าเป็น Admin หรือ แก้ไขข้อมูลตัวเอง
-            if ($_SESSION['role'] !== 'admin' && $username !== $_SESSION['username']) {
-                 $_SESSION['msg_error'] = "คุณไม่มีสิทธิ์แก้ไขข้อมูลผู้อื่น";
-            } else {
+            // -------------------------------------------------------
+            // UPDATE (แก้ไขข้อมูล) - แยกกรณีตามความต้องการ
+            // -------------------------------------------------------
+            
+            // กรณีที่ 1: เจ้าของบัญชี แก้ไขข้อมูลตัวเอง (แก้ได้ทุกอย่าง)
+            if ($id == $_SESSION['user_id']) {
                 if (!empty($password)) {
                     $hashed_password = password_hash($password, PASSWORD_DEFAULT);
                     $stmt = $conn->prepare("UPDATE users SET fullname=?, email=?, phone=?, role=?, status=?, password=? WHERE id=?");
@@ -73,16 +75,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
                     $stmt = $conn->prepare("UPDATE users SET fullname=?, email=?, phone=?, role=?, status=? WHERE id=?");
                     $stmt->bind_param("sssssi", $fullname, $email, $phone, $role, $status, $id);
                 }
+                
+                if ($stmt->execute()) {
+                    $_SESSION['msg_success'] = "แก้ไขข้อมูลส่วนตัวเรียบร้อย";
+                    $_SESSION['fullname'] = $fullname; // อัปเดต Session ตัวเอง
+                } else {
+                    $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $conn->error;
+                }
+
+            // กรณีที่ 2: Admin แก้ไขข้อมูลคนอื่น (แก้ได้แค่ Role และ Status เท่านั้น)
+            // ** สำคัญ: ไม่ไปยุ่งกับ Password หรือข้อมูลส่วนตัวเขา **
+            } elseif ($_SESSION['role'] === 'admin') {
+                
+                // อัปเดตเฉพาะ Role และ Status
+                $stmt = $conn->prepare("UPDATE users SET role=?, status=? WHERE id=?");
+                $stmt->bind_param("ssi", $role, $status, $id);
 
                 if ($stmt->execute()) {
-                    $_SESSION['msg_success'] = "แก้ไขข้อมูลเรียบร้อย";
-                    // ถ้าแก้ไขตัวเอง ให้อัปเดต Session ด้วย
-                    if ($id == $_SESSION['user_id']) {
-                        $_SESSION['fullname'] = $fullname;
-                    }
+                    $_SESSION['msg_success'] = "อัปเดตสถานะ/ตำแหน่ง เรียบร้อย";
                 } else {
-                    $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการแก้ไข";
+                    $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $conn->error;
                 }
+
+            } else {
+                // กรณีที่ 3: พนักงานทั่วไป พยายามแฮกแก้ข้อมูลคนอื่น
+                $_SESSION['msg_error'] = "คุณไม่มีสิทธิ์แก้ไขข้อมูลของผู้อื่น";
             }
         }
     }
@@ -93,10 +110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
              $_SESSION['msg_error'] = "คุณไม่มีสิทธิ์ลบผู้ใช้งาน";
         } else {
             $del_id = intval($_POST['del_id']);
-            $check_self = $conn->query("SELECT username FROM users WHERE id = $del_id");
-            $target_user = $check_self->fetch_assoc();
-
-            if ($target_user && $target_user['username'] == $_SESSION['username']) {
+            // ตรวจสอบก่อนลบ
+            if ($del_id == $_SESSION['user_id']) {
                 $_SESSION['msg_error'] = "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ได้";
             } else {
                 $conn->query("DELETE FROM users WHERE id = $del_id");
@@ -139,7 +154,7 @@ $query_users = $conn->query($sql);
 <link rel="stylesheet" href="style.css">
 
 <style>
-/* CSS styles */
+/* CSS styles (เหมือนเดิม) */
 .content-container { padding: 30px; }
 .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
 .btn-add-new { background: #27ae60; color: white; padding: 12px 20px; border-radius: 10px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer; }
@@ -147,7 +162,7 @@ $query_users = $conn->query($sql);
 .search-box { background:#fff; padding:18px 20px; border-radius:14px; display:flex; gap:10px; align-items:center; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
 .search-box input { flex:1; border:none; background:#eef2f6; padding:12px 14px; border-radius:10px; }
 .btn-search { background:#356CB5; padding:10px 18px; border-radius:10px; color:white; border:none; cursor: pointer; }
-table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius:14px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
+table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius:14px; box-shadow:0 4px 15px rgba(0,0,0,0.05); border-radius: 14px; overflow: hidden; }
 th, td { padding:14px 12px; border-bottom:1px solid #eee; text-align: left; }
 th { background:#f3f6fb; font-weight:600; }
 .badge { padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; }
@@ -160,26 +175,23 @@ th { background:#f3f6fb; font-weight:600; }
 .btn-delete { background: #e74c3c; color: white; }
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
 
-/* Modal Layout 2 Columns */
+/* Modal Layout */
 .modal-content { 
     background-color: #fff; margin: 2% auto; padding: 30px; border-radius: 16px; 
     width: 90%; max-width: 800px; 
     box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; font-family: 'Prompt', sans-serif;
 }
-.form-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-}
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 .form-group { margin-bottom: 15px; }
 .form-group label { display: block; margin-bottom: 8px; font-weight: 500; color: #333; font-size: 14px; }
 .form-control { width: 100%; padding: 12px 15px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; background: #fff; color: #333; box-sizing: border-box; }
 .form-control:focus { outline: none; border-color: #333; }
+.form-control:read-only { background-color: #f2f2f2; cursor: not-allowed; color: #777; } /* เพิ่ม Style Readonly */
+
 .btn-submit { width: 100%; background: #356CB5; color: white; padding: 15px; border: none; border-radius: 8px; font-size: 16px; font-weight: 500; cursor: pointer; margin-top: 20px; }
 .btn-submit:hover { background: #285291; }
 .close { position: absolute; right: 20px; top: 20px; font-size: 24px; cursor: pointer; color: #aaa; }
 .close:hover { color: #000; }
-
 @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
@@ -235,7 +247,6 @@ th { background:#f3f6fb; font-weight:600; }
                     </td>
                     <td>
                         <?php 
-                           // ถ้ายังไม่มี status ใน DB ให้กันไว้ก่อน
                            $st = isset($u['status']) ? $u['status'] : 'active';
                            $st_display = ($st == 'active') ? 'เปิดใช้งาน' : 'ระงับ';
                            $st_class = ($st == 'active') ? 'status-active' : 'status-inactive';
@@ -243,11 +254,14 @@ th { background:#f3f6fb; font-weight:600; }
                         <span class="badge <?= $st_class ?>"><?= $st_display ?></span>
                     </td>
                     <td>
-                        <?php if ($_SESSION['role'] === 'admin' || $_SESSION['username'] == $u['username']): ?>
+                        <?php if ($_SESSION['user_id'] == $u['id'] || $_SESSION['role'] === 'admin'): ?>
                         <button type="button" class="action-btn btn-edit" onclick='openUserModal(<?= json_encode($u) ?>)'><i class="fa-solid fa-pen"></i></button>
                         <?php endif; ?>
+                        
                         <?php if ($_SESSION['role'] === 'admin'): ?>
-                        <button type="button" class="action-btn btn-delete" onclick="deleteUser(<?= $u['id'] ?>, '<?= $u['username'] ?>')"><i class="fa-solid fa-trash"></i></button>
+                            <?php if ($_SESSION['user_id'] != $u['id']): ?>
+                            <button type="button" class="action-btn btn-delete" onclick="deleteUser(<?= $u['id'] ?>, '<?= $u['username'] ?>')"><i class="fa-solid fa-trash"></i></button>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </td>
                 </tr>
@@ -320,13 +334,15 @@ th { background:#f3f6fb; font-weight:600; }
 <form id="deleteForm" method="post" style="display:none;"><input type="hidden" name="action" value="delete_user"><input type="hidden" name="del_id" id="del_id_input"></form>
 
 <script>
+// ดึง user_id ของคนล็อกอินมาใช้ใน JS เพื่อเทียบว่าเป็นตัวเองหรือไม่
+const currentUserId = <?= $_SESSION['user_id'] ?>;
 const currentUserRole = '<?= isset($_SESSION['role']) ? $_SESSION['role'] : '' ?>';
 
 function openUserModal(user = null) {
     const modal = document.getElementById('userModal');
     const title = document.getElementById('modal_title');
     
-    // Reset Form
+    // Reset Form Values
     document.getElementById('user_id').value = '';
     document.getElementById('username').value = '';
     document.getElementById('fullname').value = '';
@@ -337,41 +353,77 @@ function openUserModal(user = null) {
     document.getElementById('role').value = 'staff';
     document.getElementById('status').value = 'active';
 
+    // Reset Permissions (ปลดล็อคทุกช่องก่อน)
+    setFieldReadOnly('username', false);
+    setFieldReadOnly('fullname', false);
+    setFieldReadOnly('email', false);
+    setFieldReadOnly('phone', false);
+    setFieldReadOnly('password', false);
+    setFieldReadOnly('confirm_password', false);
+    
     const roleSelect = document.getElementById('role');
     const statusSelect = document.getElementById('status');
 
-    // ถ้าไม่ใช่ Admin ให้ปิดการแก้ไข Role/Status
-    if (currentUserRole !== 'admin') {
-        roleSelect.style.pointerEvents = 'none';
-        roleSelect.style.backgroundColor = '#f2f2f2';
-        statusSelect.style.pointerEvents = 'none';
-        statusSelect.style.backgroundColor = '#f2f2f2';
-    } else {
-        roleSelect.style.pointerEvents = 'auto';
-        roleSelect.style.backgroundColor = '#fff';
-        statusSelect.style.pointerEvents = 'auto';
-        statusSelect.style.backgroundColor = '#fff';
-    }
+    // Default: เปิดให้แก้ Role/Status ได้
+    roleSelect.style.pointerEvents = 'auto';
+    roleSelect.style.backgroundColor = '#fff';
+    statusSelect.style.pointerEvents = 'auto';
+    statusSelect.style.backgroundColor = '#fff';
 
     if (user) {
+        // --- โหมดแก้ไข ---
         title.innerText = 'แก้ไขข้อมูลผู้ใช้';
         document.getElementById('user_id').value = user.id;
         document.getElementById('username').value = user.username;
-        document.getElementById('username').readOnly = true; 
-        document.getElementById('username').style.backgroundColor = '#f2f2f2';
-        
         document.getElementById('fullname').value = user.fullname;
         document.getElementById('email').value = user.email || ''; 
         document.getElementById('phone').value = user.phone || ''; 
         document.getElementById('role').value = user.role;
-        // ถ้าฐานข้อมูลยังไม่มี status ให้ใช้ค่า default active
         document.getElementById('status').value = user.status || 'active';
+
+        // Username แก้ไม่ได้เสมอตอน Edit
+        setFieldReadOnly('username', true);
+
+        // ตรวจสอบว่าเป็น "ตัวเอง" หรือ "คนอื่น"
+        if (user.id == currentUserId) {
+            // ** แก้ตัวเอง ** : ห้ามแก้ Role/Status (ถ้าไม่ใช่ Admin)
+            if (currentUserRole !== 'admin') {
+                roleSelect.style.pointerEvents = 'none';
+                roleSelect.style.backgroundColor = '#f2f2f2';
+                statusSelect.style.pointerEvents = 'none';
+                statusSelect.style.backgroundColor = '#f2f2f2';
+            }
+        } else {
+            // ** แก้คนอื่น (Admin แก้ Staff) **
+            // ล็อคข้อมูลส่วนตัวให้หมด เหลือแค่ Role/Status
+            setFieldReadOnly('fullname', true);
+            setFieldReadOnly('email', true);
+            setFieldReadOnly('phone', true);
+            setFieldReadOnly('password', true);
+            setFieldReadOnly('confirm_password', true);
+        }
+
     } else {
+        // --- โหมดเพิ่มใหม่ ---
         title.innerText = 'เพิ่มผู้ใช้ใหม่';
-        document.getElementById('username').readOnly = false;
-        document.getElementById('username').style.backgroundColor = '#fff';
+        // ถ้าไม่ใช่ Admin ห้ามเพิ่ม (จริงๆ PHP กันไว้แล้ว แต่กันหน้าบ้านด้วย)
+        if (currentUserRole !== 'admin') {
+             roleSelect.style.pointerEvents = 'none';
+             roleSelect.style.backgroundColor = '#f2f2f2';
+             statusSelect.style.pointerEvents = 'none';
+             statusSelect.style.backgroundColor = '#f2f2f2';
+        }
     }
     modal.style.display = "block";
+}
+
+// ฟังก์ชั่นช่วยล็อค/ปลดล็อค Input
+function setFieldReadOnly(id, isReadOnly) {
+    const el = document.getElementById(id);
+    if(el) {
+        el.readOnly = isReadOnly;
+        el.style.backgroundColor = isReadOnly ? '#f2f2f2' : '#fff';
+    }
 }
 
 function closeUserModal() { document.getElementById('userModal').style.display = "none"; }

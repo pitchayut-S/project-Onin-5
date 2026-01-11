@@ -3,7 +3,7 @@ session_start();
 require_once "db.php";
 
 // -----------------------------------------------------------
-// 1. ส่วนจัดการอัปเดตสต๊อก (Logic ที่ถูกต้อง)
+// 1. ส่วนจัดการอัปเดตสต๊อก
 // -----------------------------------------------------------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] == 'update_stock') {
     $p_id = intval($_POST['product_id']);
@@ -11,7 +11,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $type = $_POST['adj_type']; // 'add' หรือ 'reduce'
     $reason = $_POST['reason']; 
     
-    // รับค่าชื่อบริษัท (ถ้าไม่มีให้เป็น null หรือว่าง)
     $supplier = isset($_POST['supplier']) ? trim($_POST['supplier']) : ""; 
 
     // ดึงค่าเก่าก่อน
@@ -33,14 +32,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         if ($update->execute()) {
             
-            // 2. บันทึกประวัติลงตาราง stock_transactions (พร้อม Username)
-            $user = $_SESSION['username']; // ดึงชื่อคนล็อกอิน
+            // 2. บันทึกประวัติลงตาราง stock_transactions
+            $user = $_SESSION['username']; 
 
+            // (หมายเหตุ: ถ้าคุณเพิ่มคอลัมน์ balance ใน DB แล้ว อย่าลืมมาเพิ่มใน SQL ตรงนี้ด้วยนะครับ)
             $log_sql = "INSERT INTO stock_transactions (username, product_id, type, amount, reason, supplier, created_at) 
                         VALUES (?, ?, ?, ?, ?, ?, NOW())";
             
             $log_stmt = $conn->prepare($log_sql);
-            // bind parameters: s=string, i=int, s=string, i=int, s=string, s=string
             $log_stmt->bind_param("sisiss", $user, $p_id, $type, $amount, $reason, $supplier);
             $log_stmt->execute();
 
@@ -50,36 +49,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
     }
     
-    // รีเฟรชหน้าเดิม
+    // รีเฟรชหน้าเดิม (ส่งค่าค้นหากลับไปด้วย)
     $redirect_url = "product_Stock.php";
-    if (isset($_GET['filter'])) $redirect_url .= "?filter=" . $_GET['filter'];
-    if (isset($_GET['search'])) $redirect_url .= "&search=" . $_GET['search'];
+    $params = [];
+    if (isset($_GET['filter'])) $params[] = "filter=" . $_GET['filter'];
+    if (isset($_GET['search'])) $params[] = "search=" . $_GET['search'];
+    if (isset($_GET['search_category'])) $params[] = "search_category=" . $_GET['search_category']; // ส่งค่าหมวดหมู่กลับ
+    
+    if (!empty($params)) {
+        $redirect_url .= "?" . implode("&", $params);
+    }
     
     header("Location: " . $redirect_url);
     exit();
 }
 
 // -----------------------------------------------------------
-// 2. ส่วน Logic แสดงผล
+// 2. ส่วน Logic แสดงผล & ค้นหา
 // -----------------------------------------------------------
 
 if (!isset($_SESSION['first_login'])) { $_SESSION['first_login'] = true; }
 if (!isset($_SESSION['username'])) { header("Location: index.php"); exit(); }
 
+// --- [เพิ่ม] ดึงหมวดหมู่มาทำ Dropdown ---
+$cate_query = $conn->query("SELECT id, category_name FROM product_category ORDER BY category_name ASC");
+$categories = [];
+while ($cat = $cate_query->fetch_assoc()) {
+    $categories[] = $cat;
+}
+
+// รับค่าตัวแปรค้นหา
 $search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
+$search_category = isset($_GET['search_category']) ? $_GET['search_category'] : ""; // [เพิ่ม] รับค่าหมวดหมู่
 $filter = isset($_GET['filter']) ? $_GET['filter'] : "all";
 
-$sql = "SELECT p.id, p.product_code, p.name, c.category_name, p.quantity, p.exp_date, p.image 
-        FROM products p LEFT JOIN product_category c ON p.category = c.id WHERE 1";
+// สร้าง SQL หลัก
+$sql = "SELECT p.id, p.product_code, p.name, c.category_name, p.quantity, p.exp_date, p.image, p.unit 
+        FROM products p LEFT JOIN product_category c ON p.category = c.id WHERE 1=1 ";
 
+// กรองด้วยข้อความ
 if ($search_text !== "") {
     $like = "%" . $conn->real_escape_string($search_text) . "%";
     $sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like')";
 }
 
+// [เพิ่ม] กรองด้วยหมวดหมู่
+if ($search_category !== "") {
+    $safe_cat = $conn->real_escape_string($search_category);
+    $sql .= " AND p.category = '$safe_cat' ";
+}
+
+// กรองด้วยปุ่ม Filter สถานะ
 if ($filter === "lowstock") { $sql .= " AND p.quantity > 0 AND p.quantity <= 10"; }
 if ($filter === "outofstock") { $sql .= " AND p.quantity = 0"; }
-if ($filter === "expired") { $sql .= " AND p.exp_date < CURDATE()"; }
+if ($filter === "expired") { $sql .= " AND p.exp_date < CURDATE() AND p.exp_date != '0000-00-00'"; }
 
 $sql .= " ORDER BY p.id DESC";
 $products = $conn->query($sql);
@@ -99,30 +122,50 @@ $products = $conn->query($sql);
 .content-container { padding: 30px; }
 .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
 
-.filter-buttons { display:flex; gap:10px; margin-bottom:20px; }
-.filter-buttons a { padding:10px 18px; border-radius:10px; text-decoration:none; font-weight:600; color:white; }
+.filter-buttons { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.filter-buttons a { padding:10px 18px; border-radius:10px; text-decoration:none; font-weight:600; color:white; transition: 0.2s; }
+.filter-buttons a:hover { box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
 .btn-all { background:#3498db; }
-.btn-low { background:#f1c40f; color:black; }
+.btn-low { background:#f1c40f; color:black !important; }
 .btn-out { background:#7f8c8d; }
 .btn-expired { background:#e74c3c; }
-.filter-buttons a.active { box-shadow:0 0 0 3px rgba(0,0,0,0.15); }
+.filter-buttons a.active { box-shadow:0 0 0 3px rgba(0,0,0,0.2) inset; transform: scale(0.98); }
 
-.search-box { background:#fff; padding:18px 20px; border-radius:14px; display:flex; gap:10px; align-items:center; margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
-.search-box input { flex:1; border:none; background:#eef2f6; padding:12px 14px; border-radius:10px; }
+/* Updated Search Box */
+.search-box { 
+    background:#fff; padding:18px 20px; border-radius:14px; 
+    display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    margin-bottom:20px; box-shadow:0 4px 15px rgba(0,0,0,0.05); 
+}
+.search-box input { 
+    flex:1; border:none; background:#eef2f6; 
+    padding:12px 14px; border-radius:10px; font-family:'Prompt'; 
+    min-width: 200px;
+}
+/* [เพิ่ม] Style สำหรับ Dropdown */
+.search-select {
+    border: none; background: #eef2f6;
+    padding: 12px 14px; border-radius: 10px; font-size: 14px;
+    font-family: 'Prompt', sans-serif; cursor: pointer;
+    min-width: 150px;
+}
+
 .btn-search { background:#356CB5; padding:10px 18px; border-radius:10px; color:white; border:none; cursor: pointer; }
+.btn-reset { background:#e7ebf0; padding:10px 16px; border-radius:10px; text-decoration:none; color:#333; display: flex; align-items: center; }
 
-table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius:14px; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
+table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius: 14px; overflow: hidden; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
 th, td { padding:14px 12px; border-bottom:1px solid #eee; }
 th { background:#f3f6fb; font-weight:600; }
+tr:hover { background-color: #f0f7ff; }
 
 .product-img { width:65px; height:65px; object-fit:cover; border-radius:10px; border:1px solid #ccc; }
 .badge { padding:6px 12px; border-radius:20px; font-size:12px; font-weight:600; }
 .stock-normal { background:#e6f6ed; color:#1b9c5a; }
 .stock-low { background:#fdecea; color:#c0392b; }
-.stock-warn { background:#f9e79f; color:#af601a; }
+.stock-warn { background:#fff8e1; color:#f39c12; }
 
 .btn-adjust { background:#3498db; padding:7px 12px; border-radius:8px; color:white; text-decoration:none; border: none; cursor: pointer; font-size: 14px; transition: background 0.2s; }
-.btn-adjust:hover { background:#2980b9; }
+.btn-adjust:hover { background:#2980b9; transform: translateY(-1px); }
 
 /* Modal Styles */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
@@ -182,8 +225,22 @@ th { background:#f3f6fb; font-weight:600; }
 
         <form class="search-box" method="get" action="product_Stock.php">
             <input type="hidden" name="filter" value="<?= $filter ?>">
-            <input type="text" name="search" placeholder="ค้นหา (ชื่อ / รหัส / ประเภท)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+            
+            <input type="text" name="search" placeholder="ค้นหา (ชื่อ / รหัสสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+            
+            <select name="search_category" class="search-select">
+                <option value="">-- ทุกหมวดหมู่ --</option>
+                <?php foreach ($categories as $cat): ?>
+                    <option value="<?= $cat['id'] ?>" <?= $search_category == $cat['id'] ? 'selected' : '' ?>>
+                        <?= $cat['category_name'] ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
             <button type="submit" class="btn-search">ค้นหา</button>
+            <?php if ($search_text !== "" || $search_category !== "" || $filter !== "all"): ?>
+                <a href="product_Stock.php" class="btn-reset">ล้าง</a>
+            <?php endif; ?>
         </form>
 
         <table>
@@ -204,24 +261,34 @@ th { background:#f3f6fb; font-weight:600; }
         if ($row['quantity'] <= 0) { $badge = "stock-low"; $label = "หมด"; } 
         elseif ($row['quantity'] <= 10) { $badge = "stock-warn"; $label = "ใกล้หมด"; } 
         else { $badge = "stock-normal"; $label = "ปกติ"; }
-        $expired = ($row['exp_date'] < date("Y-m-d"));
+        
+        $expired = ($row['exp_date'] != '0000-00-00' && $row['exp_date'] < date("Y-m-d"));
 ?>
                 <tr>
                     <td><?= $i++ ?></td>
                     <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
                     <td><?= $row['product_code'] ?></td>
-                    <td><?= $row['name'] ?></td>
+                    <td>
+                        <?= $row['name'] ?>
+                        <?php if($expired): ?>
+                            <br><span style="color:red; font-size:11px; font-weight:bold;"><i class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
+                        <?php endif; ?>
+                    </td>
                     <td><?= $row['category_name'] ?></td>
-                    <td><span class="badge <?= $badge ?>"><?= $row['quantity'] ?> | <?= $label ?></span></td>
+                    <td>
+                        <span class="badge <?= $badge ?>">
+                            <?= number_format($row['quantity']) ?> <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
+                        </span>
+                    </td>
                     <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= $row['exp_date'] ?></td>
                     <td>
-                        <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>)" class="btn-adjust">
+                        <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
                             <i class="fa-solid fa-pen-to-square"></i> ปรับสต๊อก
                         </button>
                     </td>
                 </tr>
 <?php endwhile; else: ?>
-                <tr><td colspan="8" style="text-align:center; padding: 20px;">ไม่มีข้อมูลสินค้า</td></tr>
+                <tr><td colspan="8" style="text-align:center; padding: 20px;">ไม่พบข้อมูลสินค้า</td></tr>
 <?php endif; ?>
             </tbody>
         </table>
@@ -240,7 +307,10 @@ th { background:#f3f6fb; font-weight:600; }
             
             <div class="form-group" style="text-align:center;">
                 <label style="font-size:14px; color:#888;">คงเหลือปัจจุบัน</label>
-                <h1 id="modal_current_qty" style="color:#3498db; margin:0; font-size:48px; line-height:1;">0</h1>
+                <div style="display:flex; align-items:baseline; justify-content:center; gap:5px;">
+                    <h1 id="modal_current_qty" style="color:#3498db; margin:0; font-size:48px; line-height:1;">0</h1>
+                    <span id="modal_unit" style="color:#666; font-size:14px;">หน่วย</span>
+                </div>
             </div>
 
             <div class="form-group">
@@ -314,13 +384,14 @@ function updateReasonOptions() {
     }
 }
 
-function openStockModal(id, name, qty) {
+function openStockModal(id, name, qty, unit) {
     var modal = document.getElementById('stockModal');
     modal.style.display = "block";
     
     document.getElementById('modal_product_id').value = id;
     document.getElementById('modal_product_name').innerText = name;
-    document.getElementById('modal_current_qty').innerText = qty;
+    document.getElementById('modal_current_qty').innerText = new Intl.NumberFormat().format(qty);
+    document.getElementById('modal_unit').innerText = unit ? unit : 'หน่วย';
 
     document.getElementById('type_add').checked = true;
     updateReasonOptions(); 

@@ -11,7 +11,7 @@ if (!isset($_SESSION['username'])) {
 // ==========================================
 // ตั้งค่าตัวเลือก "หน่วยนับ" ที่นี่
 // ==========================================
-$unit_options = ["ชิ้น", "กล่อง", "แพ็ค", "โหล", "ลัง", "คู่", "ชุด", "ขวด", "กระป๋อง", "ถุง", "ม้วน"];
+$unit_options = ["ชิ้น", "ห่อ", "กล่อง", "แพ็ค", "โหล", "ลัง", "คู่", "ชุด", "ขวด", "กระป๋อง", "ถุง", "ม้วน"];
 
 // ------------------------------------------------------------------
 // 2. ส่วนจัดการบันทึกข้อมูล (ADD & EDIT)
@@ -23,12 +23,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $product_code  = $_POST['product_code'];
         $name          = $_POST['name'];
         $category      = $_POST['category'];
-        $unit          = $_POST['unit']; // รับค่าหน่วยนับ
+        $unit          = $_POST['unit']; 
         $cost          = $_POST['cost'];
         $selling_price = $_POST['selling_price'];
         $mfg_date      = $_POST['mfg_date'];
         $exp_date      = $_POST['exp_date']; 
-        $quantity      = $_POST['quantity'];
+        $quantity      = intval($_POST['quantity']);
 
         // อัปโหลดรูปภาพ
         $image_name = "";
@@ -41,6 +41,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $stmt->bind_param("sssssddsis", $product_code, $name, $category, $unit, $cost, $selling_price, $mfg_date, $exp_date, $quantity, $image_name);
         
         if ($stmt->execute()) {
+            // [NEW] บันทึกประวัติรับเข้าสินค้าใหม่ (ถ้ามีการระบุจำนวนเริ่มต้น)
+            if ($quantity > 0) {
+                 $new_product_id = $conn->insert_id;
+                 $username = $_SESSION['username'];
+                 $stmt_tr = $conn->prepare("INSERT INTO stock_transactions (product_id, type, amount, balance, username, reason, created_at) VALUES (?, 'add', ?, ?, ?, 'สินค้าใหม่ (เริ่มต้น)', NOW())");
+                 $stmt_tr->bind_param("iiis", $new_product_id, $quantity, $quantity, $username);
+                 $stmt_tr->execute();
+            }
+
             $_SESSION['msg_success'] = "เพิ่มสินค้าเรียบร้อยแล้ว";
         } else {
             $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการเพิ่มสินค้า";
@@ -56,10 +65,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $name          = $_POST['name'];
         $category      = $_POST['category'];
         $unit          = $_POST['unit']; 
-        $quantity      = intval($_POST['quantity']); // แปลงเป็น int เพื่อความชัวร์
-        $cost          = floatval($_POST['cost']);   // แปลงเป็น float เพื่อความชัวร์
+        $new_quantity  = intval($_POST['quantity']);
+        $cost          = floatval($_POST['cost']);
         $exp_date      = $_POST['exp_date'];
-        $selling_price = floatval($_POST['selling_price']); // แปลงเป็น float เพื่อความชัวร์
+        $selling_price = floatval($_POST['selling_price']);
         $old_image     = $_POST['old_image']; 
         $image_name    = $old_image;
 
@@ -76,55 +85,93 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        // อัปเดตข้อมูล
+        // 1. ดึงค่าเดิมก่อนบันทึก เพื่อทำ Transaction
+        $q_old = $conn->query("SELECT quantity FROM products WHERE id = $id");
+        $old_qty = 0; 
+        if($q_old->num_rows > 0) { $old_qty = intval($q_old->fetch_assoc()['quantity']); }
+
+        // 2. อัปเดตข้อมูล
         $sql = "UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?";
         $stmt = $conn->prepare($sql);
         
-        // แก้ไขบรรทัดนี้: Type definition string ต้องมี 10 ตัวอักษร ตรงกับจำนวนตัวแปร 10 ตัว
-        // s=string, i=int, d=double/float
-        $stmt->bind_param("ssssiddssi", 
-            $product_code, 
-            $name, 
-            $category, 
-            $unit, 
-            $quantity, 
-            $selling_price, 
-            $cost, 
-            $exp_date, 
-            $image_name, 
-            $id
-        );
+        $stmt->bind_param("ssssiddssi", $product_code, $name, $category, $unit, $new_quantity, $selling_price, $cost, $exp_date, $image_name, $id);
 
         if ($stmt->execute()) {
+             // 3. บันทึกประวัติถ้ายอดเปลี่ยน
+             if ($new_quantity != $old_qty) {
+                $diff = $new_quantity - $old_qty;
+                $type = ($diff > 0) ? 'add' : 'reduce';
+                $amount = abs($diff);
+                $balance = $new_quantity;
+                $username = $_SESSION['username'];
+                $reason = "แก้ไขข้อมูลสินค้า (ปรับยอด)";
+
+                $stmt_tr = $conn->prepare("INSERT INTO stock_transactions (product_id, type, amount, balance, username, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
+                $stmt_tr->bind_param("isiis", $id, $type, $amount, $balance, $username, $reason);
+                $stmt_tr->execute();
+            }
+
             $_SESSION['msg_success'] = "แก้ไขข้อมูลสำเร็จ";
         } else {
             $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการแก้ไข: " . $stmt->error;
         }
         
-        $stmt->close(); // อย่าลืมปิด statement
+        $stmt->close(); 
         header("Location: product_list.php");
         exit();
     }
 }
 
 // ------------------------------------------------------------------
-// 3. เตรียมข้อมูลสำหรับแสดงผล
+// 3. เตรียมข้อมูลสำหรับแสดงผล & คำนวณรหัสสินค้าถัดไป
 // ------------------------------------------------------------------
 
-// ดึงหมวดหมู่สินค้า (เพิ่ม SELECT prefix)
+// 3.1 ดึงหมวดหมู่สินค้า
 $cate_query = $conn->query("SELECT id, category_name, prefix FROM product_category ORDER BY category_name ASC");
 $categories = [];
 while ($cat = $cate_query->fetch_assoc()) {
     $categories[] = $cat;
 }
 
-// ค้นหาและดึงสินค้า
+// 3.2 คำนวณรหัสถัดไปของแต่ละหมวดหมู่
+$next_codes_map = []; 
+foreach ($categories as $cat) {
+    $cat_id = $cat['id'];
+    $prefix = !empty($cat['prefix']) ? $cat['prefix'] : 'PD'; 
+
+    $sql_last = "SELECT product_code FROM products WHERE category = $cat_id ORDER BY id DESC LIMIT 1";
+    $res_last = $conn->query($sql_last);
+    
+    $next_num = 1;
+    if ($res_last->num_rows > 0) {
+        $row_last = $res_last->fetch_assoc();
+        $parts = explode('-', $row_last['product_code']);
+        if (count($parts) > 1) {
+            $next_num = intval(end($parts)) + 1;
+        }
+    }
+    
+    $next_codes_map[$cat_id] = $prefix . "-" . str_pad($next_num, 3, "0", STR_PAD_LEFT);
+}
+
+// 3.3 ค้นหาและดึงสินค้า
 $search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
-$sql = "SELECT p.*, c.category_name FROM products p LEFT JOIN product_category c ON p.category = c.id";
+$search_category = isset($_GET['search_category']) ? $_GET['search_category'] : ""; // รับค่าหมวดหมู่ที่ค้นหา
+
+$sql = "SELECT p.*, c.category_name FROM products p LEFT JOIN product_category c ON p.category = c.id WHERE 1=1 ";
+
+// กรองด้วยข้อความ
 if ($search_text !== "") {
     $like = "%".$conn->real_escape_string($search_text)."%";
-    $sql .= " WHERE p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like'";
+    $sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like')";
 }
+
+// กรองด้วยหมวดหมู่
+if ($search_category !== "") {
+    $safe_cat = $conn->real_escape_string($search_category);
+    $sql .= " AND p.category = '$safe_cat' ";
+}
+
 $sql .= " ORDER BY p.id DESC";
 $products = $conn->query($sql);
 ?>
@@ -142,62 +189,53 @@ $products = $conn->query($sql);
     <style>
         .content-container { padding: 30px; }
         .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
-
-        /* Search Box */
-        .search-box {
-            background: #fff; padding: 18px 20px; border-radius: 14px;
-            display: flex; gap: 10px; align-items: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+        
+        /* Search Box Updated */
+        .search-box { 
+            background: #fff; padding: 18px 20px; border-radius: 14px; 
+            display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; 
         }
-        .search-box input {
-            flex: 1; border: none; background: #eef2f6;
+        .search-box input { 
+            flex: 1; border: none; background: #eef2f6; 
+            padding: 12px 14px; border-radius: 10px; font-size: 14px; min-width: 200px;
+        }
+        /* Dropdown Style */
+        .search-select {
+            border: none; background: #eef2f6;
             padding: 12px 14px; border-radius: 10px; font-size: 14px;
+            font-family: 'Prompt', sans-serif; cursor: pointer;
+            min-width: 150px;
         }
+
         .btn-search { background:#356CB5; color:white; padding:10px 18px; border:none; border-radius:10px; font-weight:600; cursor:pointer; }
-        .btn-reset { background:#e7ebf0; padding:10px 16px; border-radius:10px; text-decoration:none; color:#333; }
+        .btn-reset { background:#e7ebf0; padding:10px 16px; border-radius:10px; text-decoration:none; color:#333; display: flex; align-items: center; }
 
         /* Table */
-        table { 
-            width: 100%; border-collapse: separate; border-spacing: 0;
-            background:#fff; border-radius: 14px; overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.04);
-        }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; background:#fff; border-radius: 14px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.04); }
         th, td { padding:14px 12px; border-bottom:1px solid #eee; }
         th { background:#f3f6fb; font-weight:600; }
+        tr:hover { background-color: #a1c9ff1f;}
         
         .product-img { width: 65px; height: 65px; object-fit: cover; border-radius:12px; border:1px solid #ddd; }
-        
         .badge { padding:6px 12px; font-size:12px; font-weight:600; border-radius:20px; }
         .stock-ok { background:#e6f6ed; color:#1b9c5a; }
         .stock-low { background:#fdecea; color:#c0392b; }
-
-        .btn-edit { background:#f1c40f; padding:7px 12px; color:white; border-radius:8px; text-decoration:none; border:none; cursor:pointer; font-size:14px;}
-        .btn-delete { background:#e74c3c; padding:7px 12px; color:white; border-radius:8px; text-decoration:none; border:none; cursor:pointer; font-size:14px;}
-
-        /* --- Modal CSS --- */
-        .modal {
-            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
-            width: 100%; height: 100%; overflow: auto;
-            background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px);
-        }
-        .modal-content {
-            background-color: #fff; margin: 5% auto; padding: 25px;
-            border: 1px solid #888; width: 90%; max-width: 600px;
-            border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            animation: slideDown 0.3s ease-out; font-family: 'Prompt', sans-serif;
-            position: relative;
-        }
-        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         
+        .btn-edit { background:#f1c40f; padding:7px 5px; color:white; border-radius:8px; text-decoration:none; border:none; cursor:pointer; font-size:14px;}
+        .btn-delete { background:#e74c3c; padding:7px 5px; color:white; border-radius:8px; text-decoration:none; border:none; cursor:pointer; font-size:14px;}
+        
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
+        .modal-content { background-color: #fff; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideDown 0.3s ease-out; font-family: 'Prompt', sans-serif; position: relative; }
+        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .close { position: absolute; right: 20px; top: 15px; color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }
         .close:hover { color: #000; }
-
+        
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .full-width { grid-column: span 2; }
-        
         .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color:#333; font-size:14px; }
         .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        
         .btn-submit { width: 100%; background: #28a745; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 15px; }
         .btn-submit:hover { background: #218838; }
     </style>
@@ -230,9 +268,20 @@ $products = $conn->query($sql);
         </div>
 
         <form class="search-box" method="get" action="product_list.php">
-            <input type="text" name="search" placeholder="ค้นหา (รหัส / ชื่อ / ประเภทสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+            <input type="text" name="search" placeholder="ค้นหา (รหัส / ชื่อสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+            
+            <select name="search_category" class="search-select">
+                <option value="">-- ทุกหมวดหมู่ --</option>
+                <?php foreach ($categories as $cat): ?>
+                    <option value="<?= $cat['id'] ?>" <?= $search_category == $cat['id'] ? 'selected' : '' ?>>
+                        <?= $cat['category_name'] ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+
             <button type="submit" class="btn-search">ค้นหา</button>
-            <?php if ($search_text !== ""): ?>
+            
+            <?php if ($search_text !== "" || $search_category !== ""): ?>
                 <a href="product_list.php" class="btn-reset">ล้าง</a>
             <?php endif; ?>
         </form>
@@ -286,7 +335,7 @@ $products = $conn->query($sql);
                     </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="9" style="text-align:center; padding:20px;">ไม่มีข้อมูลสินค้า</td></tr>
+                    <tr><td colspan="11" style="text-align:center; padding:20px;">ไม่มีข้อมูลสินค้า</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
@@ -308,18 +357,19 @@ $products = $conn->query($sql);
                 <div class="form-group">
                     <label>ประเภทสินค้า <span style="color:red;">*</span></label>
                     <select name="category" id="add_category" class="form-control" onchange="genProductCode()" required>
-                        <option value="" data-prefix="">-- เลือกประเภท --</option>
+                        <option value="">-- เลือกประเภท --</option>
                         <?php foreach ($categories as $cat): ?>
-                            <option value="<?= $cat['id'] ?>" data-prefix="<?= isset($cat['prefix']) ? $cat['prefix'] : '' ?>">
-                                <?= $cat['category_name'] ?>
-                            </option>
+                            <option value="<?= $cat['id'] ?>"><?= $cat['category_name'] ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
 
                 <div class="form-group">
                     <label>รหัสสินค้า <span style="color:red;">*</span></label>
-                    <input type="text" name="product_code" id="add_product_code" class="form-control" placeholder="เลือกประเภทเพื่อรับรหัส..." required>
+                    <input type="text" name="product_code" id="add_product_code" class="form-control" 
+                           placeholder="ระบบจะสร้างให้อัตโนมัติ..." 
+                           readonly 
+                           style="background-color: #eee; cursor: not-allowed; color:#555;" required>
                 </div>
                 
                 <div class="form-group">
@@ -449,34 +499,23 @@ $products = $conn->query($sql);
 </div>
 
 <script>
-    // ฟังก์ชันสร้าง Prefix อัตโนมัติเมื่อเลือกประเภท
+    const nextCodeMap = <?php echo json_encode($next_codes_map); ?>;
+
     function genProductCode() {
         const categorySelect = document.getElementById('add_category');
         const codeInput = document.getElementById('add_product_code');
-        
-        // ดึงค่า data-prefix จาก option ที่เลือก
-        const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-        const prefix = selectedOption.getAttribute('data-prefix');
-
-        if (prefix) {
-            let currentVal = codeInput.value;
-            // ถ้าช่องว่าง หรือยังไม่มีขีด ให้ใส่ Prefix ใหม่เลย
-            if (currentVal === "" || currentVal.indexOf('-') === -1) {
-                 codeInput.value = prefix + "-"; 
-            } else {
-                // ถ้ามีเลขแล้ว ให้เปลี่ยนแค่ Prefix ข้างหน้า
-                let parts = currentVal.split('-');
-                if (parts.length > 1) {
-                    codeInput.value = prefix + "-" + parts[1];
-                } else {
-                    codeInput.value = prefix + "-";
-                }
-            }
+        const catId = categorySelect.value;
+        if (nextCodeMap[catId]) {
+            codeInput.value = nextCodeMap[catId]; 
+        } else {
+            codeInput.value = ""; 
         }
     }
 
     function openAddModal() {
         document.getElementById('addModal').style.display = "block";
+        document.getElementById('add_category').value = "";
+        document.getElementById('add_product_code').value = "";
     }
 
     function openEditModal(data) {
@@ -489,7 +528,6 @@ $products = $conn->query($sql);
         document.getElementById('edit_category').value = data.category;
         document.getElementById('edit_selling_price').value = data.selling_price;
         document.getElementById('edit_cost').value = data.cost;
-        // เซ็ตค่าหน่วยนับให้ตรงกับข้อมูลเดิม
         document.getElementById('edit_unit').value = data.unit; 
 
         document.getElementById('edit_old_image').value = data.image;
@@ -518,7 +556,6 @@ $products = $conn->query($sql);
             cancelButtonText: 'ยกเลิก'
         }).then((result) => {
             if (result.isConfirmed) {
-                // ถ้ากดยืนยัน ให้วิ่งไปหน้า delete
                 window.location.href = 'products_delete.php?id=' + id;
             }
         })

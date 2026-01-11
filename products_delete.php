@@ -10,12 +10,8 @@ if (!isset($_SESSION['username'])) {
 
 // ตรวจสอบว่ามี id ถูกส่งมาหรือไม่
 if (!isset($_GET['id'])) {
-    $_SESSION['swal'] = [
-        'icon' => 'error',
-        'title' => 'ไม่พบข้อมูล',
-        'text' => 'ไม่พบสินค้าที่ต้องการลบ'
-    ];
-    header("Location: product_list.php"); // เปลี่ยนเป็นชื่อไฟล์หน้ารายการสินค้าของคุณ
+    $_SESSION['msg_error'] = "ไม่พบสินค้าที่ต้องการลบ";
+    header("Location: product_list.php");
     exit();
 }
 
@@ -28,11 +24,7 @@ $stmt->execute();
 $result = $stmt->get_result();
 
 if ($result->num_rows == 0) {
-    $_SESSION['swal'] = [
-        'icon' => 'error',
-        'title' => 'ผิดพลาด',
-        'text' => 'ไม่พบข้อมูลสินค้าในระบบ'
-    ];
+    $_SESSION['msg_error'] = "ไม่พบข้อมูลสินค้าในระบบ";
     header("Location: product_list.php");
     exit();
 }
@@ -50,23 +42,15 @@ if ($delete->execute()) {
         unlink("uploads/" . $image_file);
     }
 
-    // --- ส่วนที่ปรับปรุง: สร้าง Session สำหรับ SweetAlert ---
-    $_SESSION['swal'] = [
-        'icon' => 'success',
-        'title' => 'ลบสำเร็จ',
-        'text' => 'ลบสินค้าเรียบร้อยแล้ว'
-    ];
+    // --- [จุดที่แก้ไข] ใช้ชื่อตัวแปรให้ตรงกับหน้า product_list.php ---
+    $_SESSION['msg_success'] = "ลบข้อมูลสินค้าเรียบร้อยแล้ว";
 
 } else {
     // กรณีลบไม่สำเร็จ
-    $_SESSION['swal'] = [
-        'icon' => 'error',
-        'title' => 'ผิดพลาด',
-        'text' => 'เกิดข้อผิดพลาด ไม่สามารถลบสินค้าได้'
-    ];
+    $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $conn->error;
 }
 
 // 4. ดีดกลับไปหน้ารายการสินค้า
-header("Location: product_list.php"); // เปลี่ยนเป็นชื่อไฟล์หน้ารายการสินค้าของคุณ
+header("Location: product_list.php");
 exit();
 ?>

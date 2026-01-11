@@ -103,7 +103,7 @@ $categories = $conn->query($sql);
         }
         th, td { padding:14px 12px; border-bottom:1px solid #eee; }
         th { background:#f3f6fb; font-weight:600; }
-
+        tr:hover { background-color: #a1c9ff1f;}
         /* Buttons */
         .btn-add {
             background:#28a745; color:white; padding:10px 18px;

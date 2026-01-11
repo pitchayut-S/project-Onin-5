@@ -20,9 +20,10 @@ $date_end = isset($_GET['end']) ? $_GET['end'] : "";
 // SQL QUERY
 // ---------------------------------------------------------
 $sql = "
-    SELECT t.*, p.product_code, p.name as product_name, p.image
+    SELECT t.*, p.product_code, p.name as product_name, p.image, p.unit, c.category_name
     FROM stock_transactions t
     LEFT JOIN products p ON t.product_id = p.id
+    LEFT JOIN product_category c ON p.category = c.id
     WHERE 1
 ";
 
@@ -93,9 +94,10 @@ $result = $conn->query($sql);
             box-shadow: 0 4px 15px rgba(0,0,0,0.05);
         }
         th { background: #f8f9fa; padding: 15px; text-align: left; color: #2c3e50; font-weight: 600; border-bottom: 2px solid #eee; }
-        td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; font-size: 14px; }
+        td { padding: 15px; border-bottom: 1px solid #eee; vertical-align: middle; font-size: 14px; cursor: pointer; transition: background 0.1s;}
+        tr:hover td { background-color: #f1f7ff; } /* Highlight Row when hover */
         
-        /* User Badge (ปรับปรุงใหม่) */
+        /* User Badge */
         .user-badge {
             display: inline-flex; align-items: center; gap: 8px;
             padding: 6px 12px; border-radius: 30px;
@@ -119,8 +121,32 @@ $result = $conn->query($sql);
 
         .date-text { color: #555; font-weight: 500; }
         .time-text { color: #999; font-size: 12px; }
-        .reason-text { font-size: 14px; color: #333; font-weight: 500; }
-        .supplier-text { font-size: 12px; color: #e67e22; margin-top: 3px; display: flex; align-items: center; gap: 4px;}
+        
+        /* --- Detail Modal Styles --- */
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.6); backdrop-filter: blur(3px); }
+        .modal-content { background-color: #fff; margin: 5% auto; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideDown 0.3s ease-out; overflow: hidden; }
+        .modal-header { padding: 20px 25px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { margin: 0; font-size: 18px; color: #333; display: flex; align-items: center; gap: 10px; }
+        .close { font-size: 24px; color: #aaa; cursor: pointer; } .close:hover { color: #333; }
+        
+        .modal-body { padding: 25px; }
+        
+        /* Detail Grid in Modal */
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .detail-item { margin-bottom: 15px; }
+        .detail-label { font-size: 13px; color: #888; font-weight: 500; margin-bottom: 5px; }
+        .detail-value { font-size: 15px; color: #333; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        
+        .stock-change-box { 
+            background: #fcfcfc; border: 1px dashed #ddd; border-radius: 10px; padding: 15px; 
+            display: flex; justify-content: space-between; align-items: center; margin-top: 10px;
+        }
+        .stock-step { text-align: center; }
+        .stock-step h4 { margin: 0; font-size: 20px; color: #333; }
+        .stock-step span { font-size: 12px; color: #888; }
+        .stock-arrow { color: #ccc; font-size: 18px; }
+
+        .big-img { width: 80px; height: 80px; border-radius: 10px; object-fit: cover; border: 1px solid #eee; }
     </style>
 </head>
 
@@ -163,10 +189,10 @@ $result = $conn->query($sql);
                     <tr>
                         <th width="15%">วัน/เวลา</th>
                         <th width="15%">ผู้ทำรายการ</th>
-                        <th width="30%">สินค้า</th>
-                        <th width="10%">ประเภท</th>
+                        <th width="35%">สินค้า</th>
+                        <th width="10%">สถานะ</th>
                         <th width="10%">จำนวน</th>
-                        <th width="20%">เหตุผล / รายละเอียด</th>
+                        <th width="5%">หมายเหตุ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -177,30 +203,15 @@ $result = $conn->query($sql);
                         $date = date("d/m/Y", $timestamp);
                         $time = date("H:i", $timestamp);
 
-                        // --- ระบบสุ่มสีตามชื่อ User ---
+                        // User Avatar Logic
                         $u_name = $row['username'] ?? 'System';
-                        $first_char = mb_substr(strtoupper($u_name), 0, 1);
+                        $color_palettes = [['#e3f2fd','#1565c0'],['#e8f5e9','#2e7d32'],['#f3e5f5','#7b1fa2'],['#fff3e0','#ef6c00'],['#e0f7fa','#00838f'],['#fce4ec','#c2185b']];
+                        $theme = (strtolower($u_name) == 'admin') ? ['#ffebee', '#c62828'] : $color_palettes[crc32($u_name) % count($color_palettes)];
                         
-                        // ชุดสี (Background, Text Color)
-                        $color_palettes = [
-                            ['#e3f2fd', '#1565c0'], // ฟ้า
-                            ['#e8f5e9', '#2e7d32'], // เขียว
-                            ['#f3e5f5', '#7b1fa2'], // ม่วง
-                            ['#fff3e0', '#ef6c00'], // ส้ม
-                            ['#e0f7fa', '#00838f'], // ฟ้าอมเขียว
-                            ['#fce4ec', '#c2185b'], // ชมพู
-                        ];
-
-                        // ถ้าเป็น Admin ให้ใช้สีแดง/ชมพูเสมอ
-                        if (strtolower($u_name) == 'admin' || strtolower($u_name) == 'administrator') {
-                            $theme = ['#ffebee', '#c62828']; // แดง
-                        } else {
-                            // ถ้าไม่ใช่ Admin ให้สุ่มตามชื่อ (จะได้สีเดิมตลอดสำหรับคนเดิม)
-                            $index = crc32($u_name) % count($color_palettes);
-                            $theme = $color_palettes[abs($index)];
-                        }
+                        // Prepare JSON data for Modal
+                        $jsonData = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
                     ?>
-                    <tr>
+                    <tr onclick="showDetail(<?= $jsonData ?>)">
                         <td>
                             <div class="date-text"><?= $date ?></div>
                             <div class="time-text"><?= $time ?> น.</div>
@@ -219,8 +230,8 @@ $result = $conn->query($sql);
                                     <div class="p-img" style="background:#eee; display:flex; align-items:center; justify-content:center; color:#ccc;"><i class="fa-solid fa-box"></i></div>
                                 <?php endif; ?>
                                 <div>
-                                    <div class="p-name"><?= $row['product_name'] ?></div>
-                                    <div class="p-code"><?= $row['product_code'] ?></div>
+                                    <div class="p-name"><?= $row['product_name'] ?? '<span style="color:red;">(สินค้าถูกลบ)</span>' ?></div>
+                                    <div class="p-code"><?= $row['product_code'] ?? '-' ?></div>
                                 </div>
                             </div>
                         </td>
@@ -234,13 +245,10 @@ $result = $conn->query($sql);
                         <td style="font-weight:bold; font-size:16px; color: #333;">
                             <?= number_format($row['amount']) ?>
                         </td>
-                        <td>
-                            <div class="reason-text"><?= $row['reason'] ?></div>
-                            <?php if(!empty($row['supplier'])): ?>
-                                <div class="supplier-text">
-                                    <i class="fa-solid fa-truck"></i> จาก: <?= $row['supplier'] ?>
-                                </div>
-                            <?php endif; ?>
+                        <td style="text-align:center;">
+                            <button style="background:none; border:none; color:#356CB5; cursor:pointer;">
+                                <i class="fa-solid fa-circle-info" style="font-size:20px;"></i>
+                            </button>
                         </td>
                     </tr>
                     <?php endwhile; ?>
@@ -258,6 +266,152 @@ $result = $conn->query($sql);
 
     </div>
 </div>
+
+<div id="detailModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3><i class="fa-solid fa-file-invoice"></i> รายละเอียดการทำรายการ</h3>
+            <span class="close" onclick="closeDetail()">&times;</span>
+        </div>
+        <div class="modal-body">
+            
+            <div style="display:flex; gap:20px; align-items:center; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid #eee;">
+                <img id="d_image" src="" class="big-img" onerror="this.style.display='none'">
+                <div id="d_no_image" class="big-img" style="display:none; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:30px;">
+                    <i class="fa-solid fa-box"></i>
+                </div>
+                <div>
+                    <div class="detail-label">สินค้า</div>
+                    <div id="d_name" style="font-size:18px; font-weight:700; color:#333;"></div>
+                    <div style="font-size:14px; color:#666;">
+                        รหัส: <span id="d_code"></span> | หมวด: <span id="d_cat"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <div class="detail-item">
+                    <div class="detail-label">ผู้ทำรายการ (User)</div>
+                    <div class="detail-value"><i class="fa-solid fa-user-circle"></i> <span id="d_user"></span></div>
+                </div>
+                <div class="detail-item">
+                    <div class="detail-label">วันเวลาที่ทำรายการ</div>
+                    <div class="detail-value"><i class="fa-regular fa-clock"></i> <span id="d_time"></span></div>
+                </div>
+                <div class="detail-item" style="grid-column: span 2;">
+                    <div class="detail-label">เหตุผล / สาเหตุ</div>
+                    <div class="detail-value" style="background:#f9f9f9; padding:10px; border-radius:8px;">
+                        <span id="d_reason"></span>
+                    </div>
+                </div>
+                <div class="detail-item" id="d_supplier_box" style="grid-column: span 2; display:none;">
+                    <div class="detail-label">รับจาก / แหล่งที่มา</div>
+                    <div class="detail-value"><i class="fa-solid fa-truck-field"></i> <span id="d_supplier"></span></div>
+                </div>
+            </div>
+
+            <div class="detail-label">สรุปยอดคงเหลือ</div>
+            <div class="stock-change-box">
+                <div class="stock-step">
+                    <span id="d_prev_label">ก่อนปรับ</span>
+                    <h4 id="d_prev_val">0</h4>
+                </div>
+                <div class="stock-arrow">
+                    <i id="d_arrow_icon" class="fa-solid fa-arrow-right"></i>
+                </div>
+                <div class="stock-step">
+                    <span id="d_change_label">ยอดปรับ</span>
+                    <h4 id="d_change_val" style="font-weight:800;">0</h4>
+                </div>
+                <div class="stock-arrow">
+                    <i class="fa-solid fa-equals"></i>
+                </div>
+                <div class="stock-step">
+                    <span>คงเหลือ (Balance)</span>
+                    <h4 id="d_balance_val" style="color:#356CB5;">0</h4>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function showDetail(data) {
+        // 1. Set Product Info
+        if(data.image) {
+            document.getElementById('d_image').src = 'uploads/' + data.image;
+            document.getElementById('d_image').style.display = 'block';
+            document.getElementById('d_no_image').style.display = 'none';
+        } else {
+            document.getElementById('d_image').style.display = 'none';
+            document.getElementById('d_no_image').style.display = 'flex';
+        }
+        
+        document.getElementById('d_name').innerText = data.product_name ? data.product_name : '(สินค้าถูกลบ)';
+        document.getElementById('d_code').innerText = data.product_code ? data.product_code : '-';
+        document.getElementById('d_cat').innerText = data.category_name ? data.category_name : '-';
+
+        // 2. Set User & Time
+        document.getElementById('d_user').innerText = data.username ? data.username : 'System';
+        
+        // Format Date
+        const dateObj = new Date(data.created_at);
+        const dateStr = dateObj.toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' });
+        document.getElementById('d_time').innerText = dateStr;
+
+        // 3. Reason & Supplier
+        document.getElementById('d_reason').innerText = data.reason;
+        if(data.supplier) {
+            document.getElementById('d_supplier').innerText = data.supplier;
+            document.getElementById('d_supplier_box').style.display = 'block';
+        } else {
+            document.getElementById('d_supplier_box').style.display = 'none';
+        }
+
+        // 4. Calculate Stock Movement
+        const amount = parseInt(data.amount);
+        const balance = parseInt(data.balance); // ยอดคงเหลือหลังทำรายการ
+        let prevBalance = 0;
+        
+        const changeLabel = document.getElementById('d_change_label');
+        const changeVal = document.getElementById('d_change_val');
+        const arrowIcon = document.getElementById('d_arrow_icon');
+
+        if(data.type === 'add') {
+            // สูตร: คงเหลือ - ยอดเพิ่ม = ยอดก่อนหน้า
+            prevBalance = balance - amount;
+            changeLabel.innerText = "รับเข้า (+)";
+            changeVal.innerText = "+" + amount;
+            changeVal.style.color = "#27ae60";
+            arrowIcon.className = "fa-solid fa-arrow-right";
+        } else {
+            // สูตร: คงเหลือ + ยอดลด = ยอดก่อนหน้า
+            prevBalance = balance + amount;
+            changeLabel.innerText = "จ่ายออก (-)";
+            changeVal.innerText = "-" + amount;
+            changeVal.style.color = "#c0392b";
+            arrowIcon.className = "fa-solid fa-arrow-right";
+        }
+
+        document.getElementById('d_prev_val').innerText = prevBalance;
+        document.getElementById('d_balance_val').innerText = balance;
+
+        // Show Modal
+        document.getElementById('detailModal').style.display = 'block';
+    }
+
+    function closeDetail() {
+        document.getElementById('detailModal').style.display = 'none';
+    }
+
+    // Close when click outside
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('detailModal')) {
+            closeDetail();
+        }
+    }
+</script>
 
 </body>
 </html>

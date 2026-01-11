@@ -3,80 +3,42 @@ session_start();
 require_once "db.php";
 
 // เช็คสิทธิ์ Login
-if (!isset($_SESSION['username'])) {
-    header("Location: index.php");
-    exit();
-}
+if (!isset($_SESSION['username'])) { header("Location: index.php"); exit(); }
 
 // =========================================================
-// PART 1: ข้อมูลการ์ด 4 ใบ (Cards Data)
+// PART 1: QUERY DATA
 // =========================================================
-
 // 1. ผลรวมสินค้า
 $sql_prod_count = "SELECT COUNT(*) as total_items FROM products";
 $total_products = $conn->query($sql_prod_count)->fetch_assoc()['total_items'];
 
-// 2. สินค้าคงเหลือทั้งหมด
+// 2. สินค้าคงเหลือ
 $sql_stock_sum = "SELECT SUM(quantity) as total_qty FROM products";
 $total_stock_qty = $conn->query($sql_stock_sum)->fetch_assoc()['total_qty'] ?? 0;
 
 // 3. ยอดขาย
-$sql_sales_all = "
-    SELECT SUM(t.amount * p.selling_price) as grand_total
-    FROM stock_transactions t
-    JOIN products p ON t.product_id = p.id
-    WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน'
-";
+$sql_sales_all = "SELECT SUM(t.amount * p.selling_price) as grand_total FROM stock_transactions t JOIN products p ON t.product_id = p.id WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน'";
 $total_sales_all = $conn->query($sql_sales_all)->fetch_assoc()['grand_total'] ?? 0;
 
-$sql_sales_today = "
-    SELECT SUM(t.amount * p.selling_price) as today_total
-    FROM stock_transactions t
-    JOIN products p ON t.product_id = p.id
-    WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน' AND DATE(t.created_at) = CURDATE()
-";
+$sql_sales_today = "SELECT SUM(t.amount * p.selling_price) as today_total FROM stock_transactions t JOIN products p ON t.product_id = p.id WHERE t.type = 'reduce' AND t.reason = 'ขายหน้าร้าน' AND DATE(t.created_at) = CURDATE()";
 $total_sales_today = $conn->query($sql_sales_today)->fetch_assoc()['today_total'] ?? 0;
 
 // 4. สินค้าใกล้หมด
 $sql_low = "SELECT COUNT(*) as low_count FROM products WHERE quantity <= 10";
 $low_stock_count = $conn->query($sql_low)->fetch_assoc()['low_count'];
 
-
-// =========================================================
-// PART 2: ข้อมูลกราฟและตาราง (Graph & Activity Data)
-// =========================================================
-
-// 5. กราฟสัดส่วนหมวดหมู่
-$sql_cat_chart = "
-    SELECT c.category_name, COUNT(p.id) as count
-    FROM products p
-    LEFT JOIN product_category c ON p.category = c.id
-    GROUP BY p.category
-";
+// 5. กราฟ
+$sql_cat_chart = "SELECT c.category_name, COUNT(p.id) as count FROM products p LEFT JOIN product_category c ON p.category = c.id GROUP BY p.category";
 $res_cat = $conn->query($sql_cat_chart);
-$cat_labels = [];
-$cat_data = [];
-while($row = $res_cat->fetch_assoc()) {
-    $cat_labels[] = $row['category_name'] ?? 'ไม่ระบุ';
-    $cat_data[] = $row['count'];
-}
+$cat_labels = []; $cat_data = [];
+while($row = $res_cat->fetch_assoc()) { $cat_labels[] = $row['category_name'] ?? 'อื่นๆ'; $cat_data[] = $row['count']; }
 
-// 6. ความเคลื่อนไหวล่าสุด (5 รายการ)
-$sql_recent = "
-    SELECT t.*, p.product_code, p.name 
-    FROM stock_transactions t
-    JOIN products p ON t.product_id = p.id
-    ORDER BY t.created_at DESC LIMIT 5
-";
+// 6. ล่าสุด
+$sql_recent = "SELECT t.*, p.product_code, p.name FROM stock_transactions t JOIN products p ON t.product_id = p.id ORDER BY t.created_at DESC LIMIT 5";
 $res_recent = $conn->query($sql_recent);
 
-// 7. สินค้าใกล้หมดอายุ (ภายใน 30 วัน)
-$sql_exp = "
-    SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left 
-    FROM products 
-    WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY)
-    ORDER BY exp_date ASC LIMIT 5
-";
+// 7. ใกล้หมดอายุ
+$sql_exp = "SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left FROM products WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY exp_date ASC LIMIT 5";
 $res_exp = $conn->query($sql_exp);
 ?>
 
@@ -85,84 +47,122 @@ $res_exp = $conn->query($sql_exp);
 <head>
     <meta charset="UTF-8">
     <title>Dashboard - Onin Shop</title>
-    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="style.css">
 
     <style>
-        .content-container { padding: 30px; font-family: 'Prompt', sans-serif; }
-        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 25px; color: #2c3e50; }
-
-        /* --- Grid Layout การ์ด 4 ใบ --- */
+        /* === DASHBOARD STYLE (Redesign) === */
+        .content-container { padding: 30px; font-family: 'Prompt', sans-serif; background-color: #f3f4f6; min-height: 100vh; }
+        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
+        
+        /* Grid Layout */
         .dashboard-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
             margin-bottom: 30px;
         }
 
-        /* Card Design */
+        /* --- THE CARD DESIGN --- */
         .stat-card {
-            background: #fff; border-radius: 12px; overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e0e0e0;
-            display: flex; flex-direction: column; height: 170px; /* เพิ่มความสูงการ์ดรวมนิดนึง */
-            transition: transform 0.2s;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 180px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #f3f4f6;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card:hover { box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); }
 
-        .stat-content { padding: 20px; flex: 1; }
-        .stat-title { font-size: 18px; font-weight: 700; color: #555; margin-bottom: 5px; }
-        .stat-value { font-size: 24px; font-weight: 600; color: #333; }
-        .stat-sub { font-size: 14px; color: #888; }
-        
-        /* --- ปรับแต่งปุ่ม Footer ให้สูงขึ้น --- */
+        .stat-body { padding: 25px 25px; flex: 1; z-index: 2; position: relative; }
+        .stat-title { font-size: 18px; font-weight: 600; color: #6b7280; margin-bottom: 5px; }
+        .stat-value { font-size: 36px; font-weight: 700; color: #111827; line-height: 1.2; }
+        .stat-unit { font-size: 16px; font-weight: 500; color: #9ca3af; margin-left: 5px; }
+        .stat-desc { font-size: 14px; color: #9ca3af; margin-top: 4px; }
+
+        /* Icon Background (Watermark) */
+        .stat-icon {
+            position: absolute;
+            right: 15px;
+            top: 20px;
+            font-size: 70px;
+            opacity: 0.1;
+            z-index: 1;
+            transition: 0.3s;
+        }
+        .stat-card:hover .stat-icon { transform: scale(1.1) rotate(5deg); opacity: 0.15; }
+
+        /* Footer Bar */
         .stat-footer {
-            padding: 10px 24px; /* เพิ่ม Padding บนล่าง */
-            color: white; 
-            text-decoration: none; 
-            font-size: 15px; /* ขยายฟอนต์นิดนึง */
+            padding: 10px 25px;
+            color: white;
+            font-size: 15px;
             font-weight: 500;
-            display: flex; 
-            justify-content: space-between; 
+            text-decoration: none;
+            display: flex;
+            justify-content: space-between;
             align-items: center;
+            z-index: 2;
+            transition: background-color 0.2s;
         }
-        .bg-blue { background-color: #1a237e; }
-        .bg-gold { background-color: #b7950b; }
-        .bg-green { background-color: #009900; }
-        .bg-red { background-color: #c62828; }
+        .stat-footer:hover { filter: brightness(90%); } /* Darken on hover */
 
-        /* --- Grid ส่วนล่าง --- */
-        .lower-section {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 20px;
-        }
+        /* Colors */
+        .card-blue .stat-val { color: #2563eb; font-weight: 600; font-size: 18px; }
+        .card-blue .stat-footer { background-color: #1a237e; }
+        .card-blue .stat-icon { color: #2563eb; }
+
+        .card-yellow .stat-val { color: #d97706; font-weight: 600; font-size: 18px; }
+        .card-yellow .stat-footer { background-color: #b7950b; }
+        .card-yellow .stat-icon { color: #d97706; }
+
+        .card-green .stat-val { color: #059669; font-weight: 600; font-size: 18px;}
+        .card-green .stat-footer { background-color: #009900; }
+        .card-green .stat-icon { color: #059669; }
+
+        .card-red .stat-val { color: #dc2626; font-weight: 600; font-size: 18px;}
+        .card-red .stat-footer { background-color: #c62828; }
+        .card-red .stat-icon { color: #dc2626; }
+
+        /* --- LOWER SECTION --- */
+        .lower-section { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; }
         @media (max-width: 992px) { .lower-section { grid-template-columns: 1fr; } }
 
         .dash-box {
-            background: #fff; border-radius: 14px; padding: 20px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #eee;
-            margin-bottom: 20px;
+            background: #fff; border-radius: 12px; padding: 25px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); border: 1px solid #f3f4f6;
+            height: 100%;
         }
         .box-header {
-            font-size: 16px; font-weight: 600; color: #2c3e50; margin-bottom: 15px;
-            border-bottom: 1px solid #eee; padding-bottom: 10px;
             display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 20px; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px;
         }
-
-        .mini-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .mini-table th { text-align: left; color: #888; padding: 8px; border-bottom: 1px solid #eee; font-weight: 500; }
-        .mini-table td { padding: 12px 8px; border-bottom: 1px solid #f9f9f9; color: #444; }
+        .box-title { font-size: 18px; font-weight: 700; color: #374151; display: flex; align-items: center; gap: 8px; }
         
-        .badge-mini { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
-        .b-in { background: #e8f8f5; color: #27ae60; }
-        .b-out { background: #fdedec; color: #c0392b; }
+        /* Table */
+        .simple-table { width: 100%; border-collapse: collapse; }
+        .simple-table th { text-align: left; padding: 12px; color: #6b7280; font-size: 13px; font-weight: 600; background: #f9fafb; border-radius: 6px; }
+        .simple-table td { padding: 14px 12px; border-bottom: 1px solid #f3f4f6; color: #1f2937; font-size: 14px; }
+        .simple-table tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #f0f7ff;}
+        
+        /* Badges */
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        .bg-in { background: #d1fae5; color: #065f46; }
+        .bg-out { background: #fee2e2; color: #991b1b; }
 
-        .warn-item {
-            padding: 10px 0; border-bottom: 1px solid #f5f5f5; display: flex; justify-content: space-between; font-size: 14px;
+        .expire-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 1px dashed #e5e7eb;
         }
-        .warn-days { color: #e74c3c; font-weight: bold; font-size: 12px; background: #ffebee; padding: 2px 8px; border-radius: 10px; }
+        .expire-days { background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 700; }
     </style>
 </head>
 
@@ -178,69 +178,74 @@ $res_exp = $conn->query($sql_exp);
         <div class="page-title">Dashboard ภาพรวม</div>
 
         <div class="dashboard-grid">
-            <div class="stat-card">
-                <div class="stat-content">
+            
+            <div class="stat-card card-blue">
+                <i class="fa-solid fa-box-open stat-icon"></i>
+                <div class="stat-body">
                     <div class="stat-title">ผลรวมสินค้า</div>
-                    <div class="stat-value">จำนวน <?= number_format($total_products) ?> สินค้า</div>
-                    <div class="stat-sub">รายการสินค้าทั้งหมดในระบบ</div>
+                    <div class="stat-val">จำนวน <?= number_format($total_products) ?> <span class="stat-unit">รายการ</span></div>
+                    <div class="stat-desc">สินค้าทั้งหมดในระบบ</div>
                 </div>
-                <a href="product_list.php" class="stat-footer bg-blue">
-                    <span>ดูรายการสินค้า</span> <i class="fa-solid fa-chevron-right"></i>
+                <a href="product_list.php" class="stat-footer">
+                    ดูรายการสินค้า <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-content">
+            <div class="stat-card card-yellow">
+                <i class="fa-solid fa-cubes-stacked stat-icon"></i>
+                <div class="stat-body">
                     <div class="stat-title">สินค้าคงเหลือ</div>
-                    <div class="stat-value">จำนวน <?= number_format($total_stock_qty) ?> ชิ้น</div>
-                    <div class="stat-sub">นับรวมทุกรายการ</div>
+                    <div class="stat-val">จำนวน <?= number_format($total_stock_qty) ?> <span class="stat-unit">ชิ้น</span></div>
+                    <div class="stat-desc">รวมจำนวนทุกรายการ</div>
                 </div>
-                <a href="product_Stock.php" class="stat-footer bg-gold">
-                    <span>เช็คสต๊อก</span> <i class="fa-solid fa-chevron-right"></i>
+                <a href="product_Stock.php" class="stat-footer">
+                    เช็คสต๊อก <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-content">
+            <div class="stat-card card-green">
+                <i class="fa-solid fa-sack-dollar stat-icon"></i>
+                <div class="stat-body">
                     <div class="stat-title">ยอดขายทั้งหมด</div>
-                    <div class="stat-value">รวม <?= number_format($total_sales_all) ?> บาท</div>
-                    <div class="stat-sub" style="color:#009900;">
-                        วันนี้ <?= number_format($total_sales_today) ?> บาท
+                    <div class="stat-val">รวม <?= number_format($total_sales_all) ?> <span class="stat-unit">บาท</span></div>
+                    <div class="stat-desc">
+                        วันนี้ +<?= number_format($total_sales_today) ?>
                     </div>
                 </div>
-                <a href="ProductPoppular.php" class="stat-footer bg-green">
-                    <span>ดูเพิ่มเติม</span> <i class="fa-solid fa-chevron-right"></i>
+                <a href="ProductPoppular.php" class="stat-footer">
+                    ดูเพิ่มเติม <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </div>
 
-            <div class="stat-card">
-                <div class="stat-content">
-                    <div class="stat-title">สินค้าใกล้หมด / ค้างสต็อก</div>
-                    <div class="stat-value">จำนวน <?= number_format($low_stock_count) ?> ชิ้น</div>
-                    <div class="stat-sub" style="color:#c62828;">รายการที่เหลือน้อยกว่า 10</div>
+            <div class="stat-card card-red">
+                <i class="fa-solid fa-triangle-exclamation stat-icon"></i>
+                <div class="stat-body">
+                    <div class="stat-title">สินค้าใกล้หมด / ค้างสต๊อก</div>
+                    <div class="stat-val"><?= number_format($low_stock_count) ?> <span class="stat-unit">รายการ</span></div>
+                    <div class="stat-desc">รายการที่เหลือน้อยกว่า 10</div>
                 </div>
-                <a href="product_Stock.php?filter=lowstock" class="stat-footer bg-red">
-                    <span>ดูเพิ่มเติม</span> <i class="fa-solid fa-chevron-right"></i>
+                <a href="product_Stock.php?filter=lowstock" class="stat-footer">
+                    ดูเพิ่มเติม <i class="fa-solid fa-arrow-right"></i>
                 </a>
             </div>
+
         </div>
 
         <div class="lower-section">
             
             <div class="dash-box">
                 <div class="box-header">
-                    <span><i class="fa-solid fa-clock-rotate-left"></i> ความเคลื่อนไหวล่าสุด (Recent Activity)</span>
-                    <a href="ReportStock.php" style="font-size:12px; color:#3498db; text-decoration:none;">ดูทั้งหมด</a>
+                    <div class="box-title"><i class="fa-solid fa-clock-rotate-left"></i> ความเคลื่อนไหวล่าสุด</div>
+                    <a href="ReportStock.php" style="font-size:16px; color:#2563eb; text-decoration:none; font-weight:700;">ดูทั้งหมด</a>
                 </div>
                 
-                <table class="mini-table">
+                <table class="simple-table">
                     <thead>
                         <tr>
-                            <th>เวลา</th>
-                            <th>User</th>
-                            <th>สินค้า</th>
-                            <th>สถานะ</th>
-                            <th>จำนวน</th>
+                            <th width="20%">เวลา</th>
+                            <th width="40%">สินค้า</th>
+                            <th width="20%">สถานะ</th>
+                            <th width="20%">จำนวน</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -249,53 +254,53 @@ $res_exp = $conn->query($sql_exp);
                             $isAdd = ($row['type']=='add');
                         ?>
                         <tr>
-                            <td><?= date("d/m H:i", strtotime($row['created_at'])) ?></td>
-                            <td>
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    <i class="fa-solid fa-user-circle" style="color:#ccc;"></i>
-                                    <?= htmlspecialchars($row['username'] ?? 'System') ?>
-                                </div>
+                            <td style="color:#6b7280; font-size:13px;">
+                                <?= date("d/m H:i", strtotime($row['created_at'])) ?>
                             </td>
-                            <td><?= $row['name'] ?></td>
+                            <td>
+                                <div style="font-weight:600; color:#1f2937;"><?= $row['name'] ?></div>
+                                <div style="font-size:12px; color:#9ca3af;"><i class="fa-solid fa-user"></i> <?= htmlspecialchars($row['username']) ?></div>
+                            </td>
                             <td>
                                 <?php if($isAdd): ?>
-                                    <span class="badge-mini b-in">เข้า</span>
+                                    <span class="status-badge bg-in"><i class="fa-solid fa-arrow-down"></i> เข้า</span>
                                 <?php else: ?>
-                                    <span class="badge-mini b-out">ออก</span>
+                                    <span class="status-badge bg-out"><i class="fa-solid fa-arrow-up"></i> ออก</span>
                                 <?php endif; ?>
                             </td>
-                            <td style="font-weight:bold;"><?= $row['amount'] ?></td>
+                            <td style="font-weight:700; font-size:15px;"><?= number_format($row['amount']) ?></td>
                         </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="5" style="text-align:center; color:#999;">ยังไม่มีรายการเคลื่อนไหว</td></tr>
+                        <tr><td colspan="4" style="text-align:center; padding:30px; color:#9ca3af;">ไม่มีข้อมูล</td></tr>
                     <?php endif; ?>
                     </tbody>
                 </table>
             </div>
 
-            <div>
+            <div style="display:flex; flex-direction:column; gap:25px;">
                 <div class="dash-box">
-                    <div class="box-header"><span><i class="fa-solid fa-chart-pie"></i> สัดส่วนสินค้าตามหมวด</span></div>
-                    <div style="height:200px; width:100%;">
+                    <div class="box-header">
+                        <div class="box-title"><i class="fa-solid fa-chart-pie" style="color:#d97706;"></i> สัดส่วนสินค้า</div>
+                    </div>
+                    <div style="height:200px; width:100%; display:flex; justify-content:center;">
                         <canvas id="catChart"></canvas>
                     </div>
                 </div>
 
                 <div class="dash-box">
-                    <div class="box-header" style="color:#c0392b;">
-                        <span><i class="fa-solid fa-hourglass-half"></i> ใกล้หมดอายุ (30 วัน)</span>
+                    <div class="box-header">
+                        <div class="box-title" style="color:#dc2626;"><i class="fa-solid fa-calendar-xmark"></i> ใกล้หมดอายุ (30 วัน)</div>
                     </div>
-                    
                     <?php if($res_exp->num_rows > 0): ?>
                         <?php while($e = $res_exp->fetch_assoc()): ?>
-                            <div class="warn-item">
-                                <span><?= $e['name'] ?></span>
-                                <span class="warn-days">อีก <?= $e['days_left'] ?> วัน</span>
+                            <div class="expire-item">
+                                <span style="color:#374151; font-weight:500;"><?= $e['name'] ?></span>
+                                <span class="expire-days">อีก <?= $e['days_left'] ?> วัน</span>
                             </div>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <div style="text-align:center; color:#999; padding:10px;">ไม่มีสินค้าใกล้หมดอายุ</div>
+                        <div style="text-align:center; color:#9ca3af; padding:20px;">ไม่มีสินค้าใกล้หมดอายุ</div>
                     <?php endif; ?>
                 </div>
             </div>
@@ -313,18 +318,19 @@ $res_exp = $conn->query($sql_exp);
             labels: <?= json_encode($cat_labels) ?>,
             datasets: [{
                 data: <?= json_encode($cat_data) ?>,
-                backgroundColor: [
-                    '#3498db', '#e74c3c', '#f1c40f', '#2ecc71', '#9b59b6', '#34495e', '#1abc9c'
-                ],
-                borderWidth: 1
+                backgroundColor: ['#36a2eb', '#ff6384', '#ff9f40', '#4bc0c0', '#9966ff', 
+                    '#ffcd56', '#00d2d3', '#ff9ff3', '#5f27cd', '#2e86de'],
+                borderWidth: 0,
+                hoverOffset: 8
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'right', labels: { boxWidth: 10, font: {size: 11} } }
-            }
+                legend: { position: 'right', labels: { boxWidth: 12, font: {family: 'Prompt', size: 11} } }
+            },
+            cutout: '65%'
         }
     });
 </script>

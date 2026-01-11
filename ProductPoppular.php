@@ -103,7 +103,6 @@ $chart_values = array_column($monthly_sales_data, 'value');
             box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center;
             position: relative; transition: transform 0.2s, box-shadow 0.2s; border: 1px solid #f0f0f0;
         }
-        .product-card:hover { transform: translateY(-5px); box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
 
         .rank-badge {
             position: absolute; top: -10px; left: -10px; width: 45px; height: 45px;
@@ -118,7 +117,7 @@ $chart_values = array_column($monthly_sales_data, 'value');
 
         .product-card img { width: 100%; height: 180px; object-fit: cover; border-radius: 12px; margin-bottom: 15px; border: 1px solid #eee; }
         .card-code { font-size: 12px; color: #95a5a6; margin-bottom: 5px; }
-        .card-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 5px; height: 50px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+        .card-title { font-size: 18px; font-weight: 600; color: #333; margin-bottom: -10px; height: 50px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
         .card-price { color: #e67e22; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
         
         .stats-box {
