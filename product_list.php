@@ -56,12 +56,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit();
     }
 
-    // --- กรณี: แก้ไขสินค้า (EDIT) ---
+     // --- กรณี: แก้ไขสินค้า (EDIT) ---
+    // [จุดที่แก้ไข] เพิ่ม Logic เปลี่ยนรหัสสินค้าเมื่อหมวดหมู่เปลี่ยน
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
         $id            = intval($_POST['id']);
-        $product_code  = $_POST['product_code'];
+        $product_code  = $_POST['product_code']; 
         $name          = $_POST['name'];
-        $category      = $_POST['category'];
+        $category      = $_POST['category']; 
         $unit          = $_POST['unit']; 
         $new_quantity  = intval($_POST['quantity']);
         $cost          = floatval($_POST['cost']);
@@ -70,10 +71,36 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $old_image     = $_POST['old_image']; 
         $image_name    = $old_image;
 
+        // 1. ตรวจสอบหมวดหมู่เดิม
+        $q_check = $conn->query("SELECT category, quantity FROM products WHERE id = $id");
+        $row_check = $q_check->fetch_assoc();
+        $old_category = $row_check['category'];
+        $old_qty = intval($row_check['quantity']);
+
+        // 2. ถ้าเปลี่ยนหมวดหมู่ -> เปลี่ยนรหัสสินค้าใหม่
+        if ($category != $old_category) {
+            $q_prefix = $conn->query("SELECT prefix FROM product_category WHERE id = '$category'");
+            $row_prefix = $q_prefix->fetch_assoc();
+            $new_prefix = !empty($row_prefix['prefix']) ? $row_prefix['prefix'] : 'PD';
+
+            // หาเลข MAX ของหมวดใหม่
+            $sql_max = "SELECT MAX(CAST(SUBSTRING_INDEX(product_code, '-', -1) AS UNSIGNED)) as max_num 
+                        FROM products 
+                        WHERE product_code LIKE '$new_prefix-%'";
+            $res_max = $conn->query($sql_max);
+            $row_max = $res_max->fetch_assoc();
+            
+            $next_num = 1;
+            if (!empty($row_max['max_num'])) {
+                $next_num = intval($row_max['max_num']) + 1;
+            }
+            $product_code = $new_prefix . "-" . str_pad($next_num, 4, "0", STR_PAD_LEFT); 
+        }
+
+        // จัดการรูปภาพ
         if (!empty($_FILES["image"]["name"])) {
             $ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
             $new_img_name = uniqid("img_") . "." . $ext;
-            
             if (move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $new_img_name)) {
                 if (!empty($old_image) && file_exists("uploads/" . $old_image)) {
                     unlink("uploads/" . $old_image);
@@ -82,15 +109,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         }
 
-        $q_old = $conn->query("SELECT quantity FROM products WHERE id = $id");
-        $old_qty = 0; 
-        if($q_old->num_rows > 0) { $old_qty = intval($q_old->fetch_assoc()['quantity']); }
-
+        // อัปเดตข้อมูล
         $sql = "UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?";
         $stmt = $conn->prepare($sql);
         $stmt->bind_param("ssssiddssi", $product_code, $name, $category, $unit, $new_quantity, $selling_price, $cost, $exp_date, $image_name, $id);
 
         if ($stmt->execute()) {
+             // บันทึก Log การเปลี่ยนแปลงสต็อก
              if ($new_quantity != $old_qty) {
                 $diff = $new_quantity - $old_qty;
                 $type = ($diff > 0) ? 'add' : 'reduce';
@@ -98,18 +123,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $balance = $new_quantity;
                 $username = $_SESSION['username'];
                 $reason = "แก้ไขข้อมูลสินค้า (ปรับยอด)";
-
                 $stmt_tr = $conn->prepare("INSERT INTO stock_transactions (product_id, type, amount, balance, username, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
                 $stmt_tr->bind_param("isiis", $id, $type, $amount, $balance, $username, $reason);
                 $stmt_tr->execute();
             }
             $_SESSION['msg_success'] = "แก้ไขข้อมูลสำเร็จ";
         } else {
-            $_SESSION['msg_error'] = "เกิดข้อผิดพลาดในการแก้ไข: " . $stmt->error;
+            $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $stmt->error;
         }
-        
         $stmt->close(); 
-        header("Location: product_list.php");
+
+        // ----------------------------------------------------
+        // [จุดสำคัญ] สร้างลิงก์ Redirect กลับไปที่เดิม
+        // ----------------------------------------------------
+        $redirect_url = "product_list.php";
+        $params = [];
+
+        // เช็คว่ามีค่าค้นหาเดิมส่งมาไหม
+        if (!empty($_POST['return_search'])) {
+            $params[] = "search=" . urlencode($_POST['return_search']);
+        }
+        if (!empty($_POST['return_category'])) {
+            // ชื่อตัวแปรต้องตรงกับที่รับ GET ด้านบน (search_category)
+            $params[] = "search_category=" . urlencode($_POST['return_category']);
+        }
+        if (!empty($_POST['return_page'])) {
+            $params[] = "page=" . intval($_POST['return_page']);
+        }
+
+        // ต่อ String URL
+        if (!empty($params)) {
+            $redirect_url .= "?" . implode("&", $params);
+        }
+
+        header("Location: " . $redirect_url);
         exit();
     }
 }
@@ -522,10 +569,16 @@ $products = $conn->query($sql);
         <span class="close" onclick="closeModal('editModal')">&times;</span>
         <h3 style="margin-top:0; color:#f39c12;">แก้ไขสินค้า</h3>
         <hr style="border:0; border-top:1px solid #eee; margin-bottom:20px;">
+
         <form method="post" enctype="multipart/form-data">
             <input type="hidden" name="action" value="edit">
             <input type="hidden" id="edit_id" name="id">
             <input type="hidden" id="edit_old_image" name="old_image">
+
+            <input type="hidden" name="return_search" value="<?= htmlspecialchars($search_text) ?>">
+            <input type="hidden" name="return_category" value="<?= htmlspecialchars($search_category) ?>">
+            <input type="hidden" name="return_page" value="<?= $page ?>">
+            
             <div class="form-grid">
                 <div class="form-group">
                     <label>รหัสสินค้า</label>
