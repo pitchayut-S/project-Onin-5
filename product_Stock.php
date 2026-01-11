@@ -35,7 +35,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // 2. บันทึกประวัติลงตาราง stock_transactions
             $user = $_SESSION['username']; 
 
-            // (หมายเหตุ: ถ้าคุณเพิ่มคอลัมน์ balance ใน DB แล้ว อย่าลืมมาเพิ่มใน SQL ตรงนี้ด้วยนะครับ)
             $log_sql = "INSERT INTO stock_transactions (username, product_id, type, amount, reason, supplier, created_at) 
                         VALUES (?, ?, ?, ?, ?, ?, NOW())";
             
@@ -54,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $params = [];
     if (isset($_GET['filter'])) $params[] = "filter=" . $_GET['filter'];
     if (isset($_GET['search'])) $params[] = "search=" . $_GET['search'];
-    if (isset($_GET['search_category'])) $params[] = "search_category=" . $_GET['search_category']; // ส่งค่าหมวดหมู่กลับ
+    if (isset($_GET['search_category'])) $params[] = "search_category=" . $_GET['search_category']; 
     
     if (!empty($params)) {
         $redirect_url .= "?" . implode("&", $params);
@@ -65,46 +64,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // -----------------------------------------------------------
-// 2. ส่วน Logic แสดงผล & ค้นหา
+// 2. ส่วน Logic แสดงผล & ค้นหา & Pagination
 // -----------------------------------------------------------
 
 if (!isset($_SESSION['first_login'])) { $_SESSION['first_login'] = true; }
 if (!isset($_SESSION['username'])) { header("Location: index.php"); exit(); }
 
-// --- [เพิ่ม] ดึงหมวดหมู่มาทำ Dropdown ---
+// ดึงหมวดหมู่มาทำ Dropdown
 $cate_query = $conn->query("SELECT id, category_name FROM product_category ORDER BY category_name ASC");
 $categories = [];
 while ($cat = $cate_query->fetch_assoc()) {
     $categories[] = $cat;
 }
 
+// ตั้งค่า Pagination
+$limit = 20; 
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$start = ($page - 1) * $limit;
+
 // รับค่าตัวแปรค้นหา
 $search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
-$search_category = isset($_GET['search_category']) ? $_GET['search_category'] : ""; // [เพิ่ม] รับค่าหมวดหมู่
+$search_category = isset($_GET['search_category']) ? $_GET['search_category'] : ""; 
 $filter = isset($_GET['filter']) ? $_GET['filter'] : "all";
 
-// สร้าง SQL หลัก
-$sql = "SELECT p.id, p.product_code, p.name, c.category_name, p.quantity, p.exp_date, p.image, p.unit 
-        FROM products p LEFT JOIN product_category c ON p.category = c.id WHERE 1=1 ";
+// สร้าง SQL Condition (ใช้ร่วมกันทั้ง Count และ Data)
+$condition_sql = " WHERE 1=1 ";
 
-// กรองด้วยข้อความ
 if ($search_text !== "") {
     $like = "%" . $conn->real_escape_string($search_text) . "%";
-    $sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like')";
+    $condition_sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like')";
 }
 
-// [เพิ่ม] กรองด้วยหมวดหมู่
 if ($search_category !== "") {
     $safe_cat = $conn->real_escape_string($search_category);
-    $sql .= " AND p.category = '$safe_cat' ";
+    $condition_sql .= " AND p.category = '$safe_cat' ";
 }
 
-// กรองด้วยปุ่ม Filter สถานะ
-if ($filter === "lowstock") { $sql .= " AND p.quantity > 0 AND p.quantity <= 10"; }
-if ($filter === "outofstock") { $sql .= " AND p.quantity = 0"; }
-if ($filter === "expired") { $sql .= " AND p.exp_date < CURDATE() AND p.exp_date != '0000-00-00'"; }
+// กรองด้วยปุ่ม Filter
+if ($filter === "lowstock") { $condition_sql .= " AND p.quantity > 0 AND p.quantity <= 10"; }
+if ($filter === "outofstock") { $condition_sql .= " AND p.quantity = 0"; }
+if ($filter === "expired") { $condition_sql .= " AND p.exp_date < CURDATE() AND p.exp_date != '0000-00-00'"; }
 
-$sql .= " ORDER BY p.id DESC";
+// 1. หาจำนวนรายการทั้งหมด (Count)
+$sql_count = "SELECT COUNT(*) as total FROM products p LEFT JOIN product_category c ON p.category = c.id" . $condition_sql;
+$query_count = $conn->query($sql_count);
+$row_count = $query_count->fetch_assoc();
+$total_records = $row_count['total'];
+$total_pages = ceil($total_records / $limit);
+
+// 2. ดึงข้อมูลจริง (ใส่ LIMIT)
+$sql = "SELECT p.id, p.product_code, p.name, c.category_name, p.quantity, p.exp_date, p.image, p.unit 
+        FROM products p LEFT JOIN product_category c ON p.category = c.id " 
+        . $condition_sql 
+        . " ORDER BY p.id DESC LIMIT $start, $limit";
 $products = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -142,7 +155,7 @@ $products = $conn->query($sql);
     padding:12px 14px; border-radius:10px; font-family:'Prompt'; 
     min-width: 200px;
 }
-/* [เพิ่ม] Style สำหรับ Dropdown */
+
 .search-select {
     border: none; background: #eef2f6;
     padding: 12px 14px; border-radius: 10px; font-size: 14px;
@@ -153,9 +166,30 @@ $products = $conn->query($sql);
 .btn-search { background:#356CB5; padding:10px 18px; border-radius:10px; color:white; border:none; cursor: pointer; }
 .btn-reset { background:#e7ebf0; padding:10px 16px; border-radius:10px; text-decoration:none; color:#333; display: flex; align-items: center; }
 
-table { width:100%; border-collapse:separate; border-spacing:0; background:white; border-radius: 14px; overflow: hidden; box-shadow:0 4px 15px rgba(0,0,0,0.05); }
+/* --- Scrollable Table CSS --- */
+.table-scroll-container {
+    width: 100%;
+    max-height: 65vh; 
+    overflow-y: auto;
+    overflow-x: auto;
+    background: #fff;
+    border-radius: 14px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.04);
+    position: relative;
+}
+
+table { width:100%; border-collapse:separate; border-spacing:0; }
 th, td { padding:14px 12px; border-bottom:1px solid #eee; }
-th { background:#f3f6fb; font-weight:600; }
+
+/* Sticky Header */
+th { 
+    background:#f3f6fb; 
+    font-weight:600; 
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+}
 tr:hover { background-color: #f0f7ff; }
 
 .product-img { width:65px; height:65px; object-fit:cover; border-radius:10px; border:1px solid #ccc; }
@@ -166,6 +200,14 @@ tr:hover { background-color: #f0f7ff; }
 
 .btn-adjust { background:#3498db; padding:7px 12px; border-radius:8px; color:white; text-decoration:none; border: none; cursor: pointer; font-size: 14px; transition: background 0.2s; }
 .btn-adjust:hover { background:#2980b9; transform: translateY(-1px); }
+
+/* Pagination Style */
+.pagination-container { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px; }
+.pagination { display: flex; justify-content: center; gap: 5px; }
+.pagination a { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; text-decoration: none; color: #333; background: white; transition: 0.2s; font-size: 14px; }
+.pagination a:hover { background-color: #f1f1f1; }
+.pagination a.active { background-color: #356CB5; color: white; border-color: #356CB5; }
+.text-muted { color: #666; font-size: 14px; }
 
 /* Modal Styles */
 .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
@@ -243,55 +285,89 @@ tr:hover { background-color: #f0f7ff; }
             <?php endif; ?>
         </form>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>รูป</th>
-                    <th>รหัสสินค้า</th>
-                    <th>ชื่อสินค้า</th>
-                    <th>ประเภท</th>
-                    <th>คงเหลือ</th>
-                    <th>วันหมดอายุ</th>
-                    <th>จัดการ</th>
-                </tr>
-            </thead>
-            <tbody>
-<?php if ($products->num_rows > 0): $i = 1; while ($row = $products->fetch_assoc()):
-        if ($row['quantity'] <= 0) { $badge = "stock-low"; $label = "หมด"; } 
-        elseif ($row['quantity'] <= 10) { $badge = "stock-warn"; $label = "ใกล้หมด"; } 
-        else { $badge = "stock-normal"; $label = "ปกติ"; }
-        
-        $expired = ($row['exp_date'] != '0000-00-00' && $row['exp_date'] < date("Y-m-d"));
-?>
-                <tr>
-                    <td><?= $i++ ?></td>
-                    <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
-                    <td><?= $row['product_code'] ?></td>
-                    <td>
-                        <?= $row['name'] ?>
-                        <?php if($expired): ?>
-                            <br><span style="color:red; font-size:11px; font-weight:bold;"><i class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
-                        <?php endif; ?>
-                    </td>
-                    <td><?= $row['category_name'] ?></td>
-                    <td>
-                        <span class="badge <?= $badge ?>">
-                            <?= number_format($row['quantity']) ?> <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
-                        </span>
-                    </td>
-                    <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= $row['exp_date'] ?></td>
-                    <td>
-                        <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
-                            <i class="fa-solid fa-pen-to-square"></i> ปรับสต๊อก
-                        </button>
-                    </td>
-                </tr>
-<?php endwhile; else: ?>
-                <tr><td colspan="8" style="text-align:center; padding: 20px;">ไม่พบข้อมูลสินค้า</td></tr>
-<?php endif; ?>
-            </tbody>
-        </table>
+        <div class="table-scroll-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50px;">ลำดับ</th>
+                        <th>รูป</th>
+                        <th>รหัสสินค้า</th>
+                        <th>ชื่อสินค้า</th>
+                        <th>ประเภท</th>
+                        <th>คงเหลือ</th>
+                        <th>วันหมดอายุ</th>
+                        <th>จัดการ</th>
+                    </tr>
+                </thead>
+                <tbody>
+    <?php if ($products->num_rows > 0): 
+        $i = $start + 1; // รันเลขลำดับต่อจากหน้าเดิม
+        while ($row = $products->fetch_assoc()):
+            if ($row['quantity'] <= 0) { $badge = "stock-low"; $label = "หมด"; } 
+            elseif ($row['quantity'] <= 10) { $badge = "stock-warn"; $label = "ใกล้หมด"; } 
+            else { $badge = "stock-normal"; $label = "ปกติ"; }
+            
+            $expired = ($row['exp_date'] != '0000-00-00' && $row['exp_date'] < date("Y-m-d"));
+    ?>
+                    <tr>
+                        <td><?= $i++ ?></td>
+                        <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
+                        <td><?= $row['product_code'] ?></td>
+                        <td>
+                            <?= $row['name'] ?>
+                            <?php if($expired): ?>
+                                <br><span style="color:red; font-size:11px; font-weight:bold;"><i class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= $row['category_name'] ?></td>
+                        <td>
+                            <span class="badge <?= $badge ?>">
+                                <?= number_format($row['quantity']) ?> <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
+                            </span>
+                        </td>
+                        <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= $row['exp_date'] ?></td>
+                        <td>
+                            <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
+                                <i class="fa-solid fa-pen-to-square"></i> ปรับสต๊อก
+                            </button>
+                        </td>
+                    </tr>
+    <?php endwhile; else: ?>
+                    <tr><td colspan="8" style="text-align:center; padding: 20px;">ไม่พบข้อมูลสินค้า</td></tr>
+    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <?php if($total_pages > 1): ?>
+        <div class="pagination-container">
+            <div class="text-muted">
+                แสดง <?= $products->num_rows ?> รายการ (จากทั้งหมด <?= number_format($total_records) ?>) - หน้า <?= $page ?> / <?= $total_pages ?>
+            </div>
+            <div class="pagination">
+                <?php if($page > 1): ?>
+                    <a href="?page=1&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="หน้าแรก"><i class="fa-solid fa-angles-left"></i> หน้าแรก</a>
+                    <a href="?page=<?= $page-1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="ย้อนกลับ"><i class="fa-solid fa-angle-left"></i></a>
+                <?php endif; ?>
+
+                <?php 
+                $range = 2; 
+                for($p = 1; $p <= $total_pages; $p++): 
+                    if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
+                ?>
+                    <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" class="<?= $page == $p ? 'active' : '' ?>"><?= $p ?></a>
+                <?php elseif (($p == $page - $range - 1) || ($p == $page + $range + 1)): ?>
+                    <span style="padding:8px; color:#999;">...</span>
+                <?php endif; endfor; ?>
+
+                <?php if($page < $total_pages): ?>
+                    <a href="?page=<?= $page+1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="ถัดไป"><i class="fa-solid fa-angle-right"></i></a>
+                    <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="หน้าสุดท้าย">หน้าสุดท้าย <i class="fa-solid fa-angles-right"></i></a>
+                <?php endif; ?>
+            </div>
+        </div>
+        <?php endif; ?>
+
     </div>
 </div>
 
@@ -364,9 +440,8 @@ const reasons = {
 function updateReasonOptions() {
     const isAdd = document.getElementById('type_add').checked;
     const select = document.getElementById('reason_select');
-    const supplierGroup = document.getElementById('supplier_group'); // กล่อง input supplier
+    const supplierGroup = document.getElementById('supplier_group'); 
     
-    // อัปเดต Dropdown เหตุผล
     const options = isAdd ? reasons.add : reasons.reduce;
     select.innerHTML = "";
     options.forEach(opt => {
@@ -376,11 +451,10 @@ function updateReasonOptions() {
         select.appendChild(el);
     });
 
-    // *** แสดง/ซ่อน ช่องกรอกชื่อบริษัท ***
     if (isAdd) {
-        supplierGroup.style.display = "block"; // แสดงเมื่อเลือก เพิ่ม
+        supplierGroup.style.display = "block"; 
     } else {
-        supplierGroup.style.display = "none";  // ซ่อนเมื่อเลือก ลด
+        supplierGroup.style.display = "none"; 
     }
 }
 
