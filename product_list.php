@@ -187,7 +187,7 @@ foreach ($categories as $cat) {
             $next_num = intval(end($parts)) + 1;
         }
     }
-    $next_codes_map[$cat_id] = $prefix . "-" . str_pad($next_num, 3, "0", STR_PAD_LEFT);
+    $next_codes_map[$cat_id] = $prefix . "-" . str_pad($next_num, 4, "0", STR_PAD_LEFT);
 }
 
 // ------------------------------------------------------------------
@@ -352,7 +352,7 @@ $products = $conn->query($sql);
 
 <?php include "sidebar.php"; ?>
 
-<div class="main-content">
+ <div class="main-content">
     <?php include "topbar.php"; ?>
 
     <div class="content-container">
