@@ -411,7 +411,12 @@ tr:hover { background-color: #f0f7ff; }
             </div>
 
             <div class="form-group">
-                <label>จำนวน (ชิ้น)</label>
+                <label>
+                    จำนวน 
+                    <span style="color:#666; font-weight:normal;">
+                        (<span id="modal_input_unit">หน่วย</span>)
+                    </span>
+                </label>
                 <input type="number" name="amount" class="form-control" placeholder="ระบุจำนวน" min="1" required>
             </div>
 
@@ -465,7 +470,7 @@ function openStockModal(id, name, qty, unit) {
     document.getElementById('modal_product_id').value = id;
     document.getElementById('modal_product_name').innerText = name;
     document.getElementById('modal_current_qty').innerText = new Intl.NumberFormat().format(qty);
-    document.getElementById('modal_unit').innerText = unit ? unit : 'หน่วย';
+    document.getElementById('modal_input_unit').innerText = unit ? unit : 'หน่วย';
 
     document.getElementById('type_add').checked = true;
     updateReasonOptions(); 

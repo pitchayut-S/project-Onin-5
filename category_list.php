@@ -169,7 +169,7 @@ $categories = $conn->query($sql);
             <table>
                 <thead>
                     <tr>
-                        <th>#</th>
+                        <th>ลำดับ</th>
                         <th>Prefix</th>
                         <th>ชื่อประเภทสินค้า</th>
                         <th>จัดการ</th>
