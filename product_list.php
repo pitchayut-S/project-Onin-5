@@ -337,7 +337,7 @@ $products = $conn->query($sql);
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px); }
         .modal-content { background-color: #fff; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: slideDown 0.3s ease-out; font-family: 'Prompt', sans-serif; position: relative; }
         @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .close { position: absolute; right: 20px; top: 15px; color: #aaa; font-size: 24px; font-weight: bold; cursor: pointer; }
+        .close { position: absolute; right: 20px; top: 20px; color: #aaa; font-size: 30px; font-weight: bold; cursor: pointer; }
         .close:hover { color: #000; }
         .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
         .full-width { grid-column: span 2; }

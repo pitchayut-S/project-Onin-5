@@ -19,13 +19,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     $prefix = strtoupper(trim($_POST['prefix']));
 
     if ($category_name !== "" && $prefix !== "") {
-        $stmt = $conn->prepare("INSERT INTO product_category (category_name, prefix) VALUES (?, ?)");
-        $stmt->bind_param("ss", $category_name, $prefix);
-        
-        if ($stmt->execute()) {
-            $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'เพิ่มประเภทสินค้าเรียบร้อยแล้ว'];
+        // --- 1. ตรวจสอบข้อมูลซ้ำก่อนเพิ่ม ---
+        $check = $conn->prepare("SELECT id FROM product_category WHERE category_name = ? OR prefix = ?");
+        $check->bind_param("ss", $category_name, $prefix);
+        $check->execute();
+        $result = $check->get_result();
+
+        if ($result->num_rows > 0) {
+            // ถ้ามีซ้ำ ให้แจ้งเตือน
+            $_SESSION['swal'] = ['icon' => 'warning', 'title' => 'ข้อมูลซ้ำ', 'text' => 'ชื่อประเภทสินค้า หรือ Prefix นี้มีอยู่ในระบบแล้ว!'];
         } else {
-            $_SESSION['swal'] = ['icon' => 'error', 'title' => 'ผิดพลาด', 'text' => 'เกิดข้อผิดพลาดในการบันทึก'];
+            // ถ้าไม่ซ้ำ ให้บันทึกตามปกติ
+            $stmt = $conn->prepare("INSERT INTO product_category (category_name, prefix) VALUES (?, ?)");
+            $stmt->bind_param("ss", $category_name, $prefix);
+            
+            if ($stmt->execute()) {
+                $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'เพิ่มประเภทสินค้าเรียบร้อยแล้ว'];
+            } else {
+                $_SESSION['swal'] = ['icon' => 'error', 'title' => 'ผิดพลาด', 'text' => 'เกิดข้อผิดพลาดในการบันทึก'];
+            }
         }
     }
     header("Location: category_list.php");
@@ -42,13 +54,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     $prefix = strtoupper(trim($_POST['prefix']));
 
     if ($category_name !== "" && $prefix !== "") {
-        $stmt = $conn->prepare("UPDATE product_category SET category_name = ?, prefix = ? WHERE id = ?");
-        $stmt->bind_param("ssi", $category_name, $prefix, $id);
-        
-        if ($stmt->execute()) {
-            $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'แก้ไขข้อมูลเรียบร้อยแล้ว'];
+        // --- 2. ตรวจสอบข้อมูลซ้ำก่อนแก้ไข (โดยยกเว้น ID ของตัวเอง) ---
+        $check = $conn->prepare("SELECT id FROM product_category WHERE (category_name = ? OR prefix = ?) AND id != ?");
+        $check->bind_param("ssi", $category_name, $prefix, $id);
+        $check->execute();
+        $result = $check->get_result();
+
+        if ($result->num_rows > 0) {
+             // ถ้ามีซ้ำกับรายการอื่น
+             $_SESSION['swal'] = ['icon' => 'warning', 'title' => 'ข้อมูลซ้ำ', 'text' => 'ชื่อประเภทสินค้า หรือ Prefix นี้ถูกใช้ไปแล้ว!'];
         } else {
-            $_SESSION['swal'] = ['icon' => 'error', 'title' => 'ผิดพลาด', 'text' => 'เกิดข้อผิดพลาดในการบันทึก'];
+            // ถ้าไม่ซ้ำ ให้แก้ไขตามปกติ
+            $stmt = $conn->prepare("UPDATE product_category SET category_name = ?, prefix = ? WHERE id = ?");
+            $stmt->bind_param("ssi", $category_name, $prefix, $id);
+            
+            if ($stmt->execute()) {
+                $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'แก้ไขข้อมูลเรียบร้อยแล้ว'];
+            } else {
+                $_SESSION['swal'] = ['icon' => 'error', 'title' => 'ผิดพลาด', 'text' => 'เกิดข้อผิดพลาดในการบันทึก'];
+            }
         }
     }
     header("Location: category_list.php");
