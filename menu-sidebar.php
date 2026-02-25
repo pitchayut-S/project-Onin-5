@@ -22,7 +22,7 @@ $menu_config = [
         'link' => 'product_Stock.php',
     ],
     [
-        'name' => 'สินค้ายอดนิยม',
+        'name' => 'รายงานยอดขาย',
         'icon' => 'fa-solid fa-heart',
         'link' => 'ProductPoppular.php',
     ],

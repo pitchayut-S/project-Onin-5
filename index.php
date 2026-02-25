@@ -32,7 +32,7 @@ if (isset($_SESSION['username'])) {
         .form-box { background: #fff; padding: 40px 50px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); width: 100%; position: relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
         .login-size { max-width: 420px; }
         .register-size { max-width: 750px; }
-        .close-btn { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; transition: 0.2s; }
+        .close-btn { position: absolute; top: 5px; right: 25px; font-size: 30px; color: #ccc; cursor: pointer; transition: 0.2s; }
         .close-btn:hover { color: var(--text-dark); }
         .form-header { text-align: center; margin-bottom: 25px; }
         .form-header h2 { color: var(--primary); font-size: 28px; font-weight: 600; }

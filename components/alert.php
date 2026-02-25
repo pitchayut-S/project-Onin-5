@@ -12,8 +12,8 @@ if (!defined('ALERT_SCRIPTS_LOADED')) {
                 text: "คุณแน่ใจใช่ไหมที่จะออกจากระบบ",
                 icon: "warning",
                 showCancelButton: true,
-                confirmButtonColor: "#3085d6",
-                cancelButtonColor: "#d33",
+                confirmButtonColor: "#d33",
+                cancelButtonColor: "#3085d6",
                 confirmButtonText: "ตกลง",
                 cancelButtonText: "ยกเลิก",
                 reverseButtons: false

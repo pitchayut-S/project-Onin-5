@@ -76,6 +76,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 <meta charset='UTF-8'>
                 <meta name='viewport' content='width=device-width, initial-scale=1.0'>
                 <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
+                <link rel='icon' type='image/png' href='favicon.png'>
                 <link href='https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap' rel='stylesheet'>
                 $swal_style
             </head>
@@ -109,6 +110,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
         <link href='https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap' rel='stylesheet'>
         $swal_style
+        <link rel='icon' type='image/png' href='favicon.png'>
     </head>
     <body>
         <script>

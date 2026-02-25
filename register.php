@@ -31,6 +31,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <script src='https://cdn.jsdelivr.net/npm/sweetalert2@11'></script>
             <link href='https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap' rel='stylesheet'>
             $swal_style
+            <link rel='icon' type='image/png' href='favicon.png'>
         </head>
         <body>";
     
