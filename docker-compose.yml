@@ -5,7 +5,7 @@ services:
     build: .
     restart: always
     ports:
-      - "8090:80"
+      - "3010:80"
     volumes:
       - .:/var/www/html
     environment:
@@ -29,7 +29,7 @@ services:
     image: phpmyadmin/phpmyadmin
     restart: always
     ports:
-      - "8080:80"
+      - "3011:80"
     environment:
       PMA_HOST: db
       PMA_USER: root
