@@ -15,4 +15,3 @@ if ($conn->connect_error) {
 
 // ตั้งค่าภาษาไทยและอีโมจิให้รองรับ utf8mb4
 $conn->set_charset("utf8mb4");
-?>
