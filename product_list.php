@@ -27,8 +27,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $unit          = $_POST['unit'];
         $cost          = $_POST['cost'];
         $selling_price = $_POST['selling_price'];
-        $mfg_date      = $_POST['mfg_date'];
-        $exp_date      = $_POST['exp_date'];
+        $mfg_date      = !empty($_POST['mfg_date']) ? $_POST['mfg_date'] : null;
+        $exp_date      = !empty($_POST['exp_date']) ? $_POST['exp_date'] : null;
         $quantity      = intval($_POST['quantity']);
 
         // [เพิ่มใหม่] ตรวจสอบว่าชื่อสินค้าซ้ำหรือไม่
