@@ -1,4 +1,5 @@
 <?php
+ob_start();
 session_start();
 require_once "db.php"; // เรียกใช้ไฟล์เชื่อมต่อฐานข้อมูล
 
