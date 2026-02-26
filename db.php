@@ -1,8 +1,9 @@
 <?php
-$servername = "localhost";
-$username   = "root";
-$password   = ""; 
-$dbname     = "onin_shop";
+// ดึงค่าจาก Environment Variable (ถ้ามี) หรือใช้ค่าเริ่มต้นสำหรับรันบน XAMPP ปกติ
+$servername = getenv('DB_HOST') ? getenv('DB_HOST') : "localhost";
+$username   = getenv('DB_USER') ? getenv('DB_USER') : "root";
+$password   = getenv('DB_PASSWORD') !== false ? getenv('DB_PASSWORD') : ""; 
+$dbname     = getenv('DB_NAME') ? getenv('DB_NAME') : "onin_shop";
 
 // สร้างการเชื่อมต่อ (แบบ mysqli object)
 $conn = new mysqli($servername, $username, $password, $dbname);
