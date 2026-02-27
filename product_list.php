@@ -758,7 +758,7 @@ $products = $conn->query($sql);
             <span class="close" onclick="closeModal('addModal')">&times;</span>
             <h3 style="margin-top:0;">เพิ่มสินค้าใหม่</h3>
             <hr style="border:0; border-top:1px solid #eee; margin-bottom:20px;">
-            <form method="post" enctype="multipart/form-data">
+            <form method="post" enctype="multipart/form-data" onsubmit="document.getElementById('btn_add_submit').disabled = true; document.getElementById('btn_add_submit').style.opacity = '0.5'; document.getElementById('btn_add_submit').innerText = 'กำลังบันทึก...'; return true;">
                 <input type="hidden" name="action" value="add">
                 <div class="form-grid">
                     <div class="form-group">
@@ -812,7 +812,7 @@ $products = $conn->query($sql);
                         <input type="file" name="image" class="form-control" accept="image/*">
                     </div>
                 </div>
-                <button type="submit" class="btn-submit">บันทึกสินค้า</button>
+                <button type="submit" id="btn_add_submit" class="btn-submit" >บันทึกสินค้า</button>
             </form>
         </div>
     </div>
