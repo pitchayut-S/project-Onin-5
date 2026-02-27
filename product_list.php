@@ -59,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         $stmt = $conn->prepare("INSERT INTO products (product_code, name, category, unit, cost, selling_price, mfg_date, exp_date, quantity, image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("sssssddsis", $product_code, $name, $category, $unit, $cost, $selling_price, $mfg_date, $exp_date, $quantity, $image_name);
+        $stmt->bind_param("ssssddssis", $product_code, $name, $category, $unit, $cost, $selling_price, $mfg_date, $exp_date, $quantity, $image_name);
 
         if ($stmt->execute()) {
             if ($quantity > 0) {
