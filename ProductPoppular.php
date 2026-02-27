@@ -316,7 +316,6 @@ $chart_values = array_column($monthly_sales_data, 'value');
             background: #f8f9fa;
             border-radius: 10px;
             padding: 10px;
-            display: flex;
             justify-content: space-between;
             margin-bottom: 15px;
             font-size: 13px;
