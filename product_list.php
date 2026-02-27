@@ -27,8 +27,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $unit          = $_POST['unit'];
         $cost          = $_POST['cost'];
         $selling_price = $_POST['selling_price'];
-        $mfg_date      = !empty($_POST['mfg_date']) ? $_POST['mfg_date'] : null;
-        $exp_date      = !empty($_POST['exp_date']) ? $_POST['exp_date'] : null;
+        $format_date = function($d) {
+            if (!is_string($d)) return null;
+            $d = trim($d);
+            if (empty($d)) return null;
+            if (preg_match('/^\d{4}$/', $d)) return $d . '-01-01';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+            $parsed = strtotime($d);
+            return $parsed ? date('Y-m-d', $parsed) : null;
+        };
+        $mfg_date      = isset($_POST['mfg_date']) ? $format_date($_POST['mfg_date']) : null;
+        $exp_date      = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
         $quantity      = intval($_POST['quantity']);
 
         // [เพิ่มใหม่] ตรวจสอบว่าชื่อสินค้าซ้ำหรือไม่
@@ -77,7 +86,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $unit          = $_POST['unit'];
         $new_quantity  = intval($_POST['quantity']);
         $cost          = floatval($_POST['cost']);
-        $exp_date      = $_POST['exp_date'];
+        $format_date = function($d) {
+            if (!is_string($d)) return null;
+            $d = trim($d);
+            if (empty($d)) return null;
+            if (preg_match('/^\d{4}$/', $d)) return $d . '-01-01';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+            $parsed = strtotime($d);
+            return $parsed ? date('Y-m-d', $parsed) : null;
+        };
+        $exp_date      = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
         $selling_price = floatval($_POST['selling_price']);
         $old_image     = $_POST['old_image'];
         $image_name    = $old_image;
