@@ -220,16 +220,16 @@ $chart_values = array_column($monthly_sales_data, 'value');
         }
 
         .cards-container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 25px;
+    margin-bottom: 40px;
+}
 
         .product-card {
             background: white;
             border-radius: 16px;
-            padding: 20px;
+            padding: 16px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             text-align: center;
             position: relative;
@@ -294,10 +294,10 @@ $chart_values = array_column($monthly_sales_data, 'value');
         }
 
         .card-title {
-            font-size: 18px;
+            font-size: 14px;
             font-weight: 600;
             color: #333;
-            margin-bottom: -10px;
+            margin-bottom: -15px;
             height: 50px;
             overflow: hidden;
             display: -webkit-box;
