@@ -122,7 +122,7 @@ if (isset($_SESSION['username'])) {
                     </div>
                     
                     <div class="input-group">
-                        <input type="tel" name="phone" id="phone" class="custom-input" placeholder="เบอร์โทรศัพท์" required maxlength="10">
+                        <input type="tel" name="phone" id="phone" class="custom-input" placeholder="เบอร์โทรศัพท์" required minlength="10" maxlength="10" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkPhone();">
                         <i class="fa-solid fa-phone input-icon"></i>
                         <span id="phone_msg" class="msg-alert"></span>
                     </div>
@@ -236,6 +236,38 @@ if (isset($_SESSION['username'])) {
                     checkFormValidity();
                 }
             });
+
+            function checkPhone() {
+                let phoneInput = document.getElementById('phone');
+                let phoneMsg = document.getElementById('phone_msg');
+                let phone = phoneInput.value;
+
+                if (phone.length === 0) {
+                    phoneMsg.innerText = ""; 
+                } else if (phone.length > 0 && phone.length < 10) {
+                    // กรณีพิมพ์ไม่ครบ 10 ตัว
+                    phoneMsg.innerText = "กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก";
+                    phoneMsg.style.color = "#dc2626"; // สีแดง
+                } else if (phone.length === 10) {
+                    // กรณีครบ 10 ตัว -> ส่ง AJAX ไปเช็คในฐานข้อมูล
+                    fetch('check_phone.php', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: 'phone=' + encodeURIComponent(phone)
+                    })
+                    .then(response => response.text())
+                    .then(data => {
+                        if (data.trim() === 'exists') {
+                            phoneMsg.innerText = "เบอร์โทรศัพท์นี้ถูกลงทะเบียนแล้ว!";
+                            phoneMsg.style.color = "#dc2626"; // สีแดง
+                            // สามารถใช้คำสั่งปิดปุ่ม Submit ตรงนี้ได้ถ้าต้องการ
+                        } else {
+                            phoneMsg.innerText = "สามารถใช้เบอร์โทรศัพท์นี้ได้";
+                            phoneMsg.style.color = "#16a34a"; // สีเขียว
+                        }
+                    });
+                }
+            }
         });
     </script>
 </body>
