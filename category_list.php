@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
     $prefix = strtoupper(trim($_POST['prefix']));
 
     if ($category_name !== "" && $prefix !== "") {
-        // --- 2. ตรวจสอบข้อมูลซ้ำก่อนแก้ไข (โดยยกเว้น ID ของตัวเอง) ---
+        // --- 1. ตรวจสอบข้อมูลซ้ำก่อนแก้ไข (โดยยกเว้น ID ของตัวเอง) ---
         $check = $conn->prepare("SELECT id FROM product_category WHERE (category_name = ? OR prefix = ?) AND id != ?");
         $check->bind_param("ssi", $category_name, $prefix, $id);
         $check->execute();
@@ -64,12 +64,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
             // ถ้ามีซ้ำกับรายการอื่น
             $_SESSION['swal'] = ['icon' => 'warning', 'title' => 'ข้อมูลซ้ำ', 'text' => 'ชื่อประเภทสินค้า หรือ Prefix นี้ถูกใช้ไปแล้ว!'];
         } else {
-            // ถ้าไม่ซ้ำ ให้แก้ไขตามปกติ
+            // --- 2. ถ้าไม่ซ้ำ ให้แก้ไขตาราง product_category ---
             $stmt = $conn->prepare("UPDATE product_category SET category_name = ?, prefix = ? WHERE id = ?");
             $stmt->bind_param("ssi", $category_name, $prefix, $id);
 
             if ($stmt->execute()) {
-                $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'แก้ไขข้อมูลเรียบร้อยแล้ว'];
+                // =========================================================================
+                // 3. [เพิ่มใหม่] สั่งอัปเดตรหัสสินค้าในตาราง products ให้สอดคล้องกัน
+                // =========================================================================
+                $sql_update_products = "UPDATE products 
+                                        SET product_code = CONCAT(?, '-', SUBSTRING_INDEX(product_code, '-', -1)) 
+                                        WHERE category = ?";
+                $stmt_prod = $conn->prepare($sql_update_products);
+                $stmt_prod->bind_param("si", $prefix, $id); 
+                $stmt_prod->execute();
+                $stmt_prod->close();
+                // =========================================================================
+
+                $_SESSION['swal'] = ['icon' => 'success', 'title' => 'สำเร็จ', 'text' => 'แก้ไขหมวดหมู่และรหัสสินค้าเรียบร้อยแล้ว'];
             } else {
                 $_SESSION['swal'] = ['icon' => 'error', 'title' => 'ผิดพลาด', 'text' => 'เกิดข้อผิดพลาดในการบันทึก'];
             }
