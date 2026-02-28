@@ -564,13 +564,14 @@ body.sidebar-collapsed .sidebar-footer li a:hover::after {
 /* =========================================
    8. Responsive
    ========================================= */
-@media (max-width: 1024px) {
-  .card-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
+/* =========================================
+   8. Responsive (หน้าจอมือถือและแท็บเล็ตเล็ก)
+   ========================================= */
+
 
 @media (max-width: 768px) {
+
+  /* --- 1. เมนูและ Sidebar (ของเดิมคุณทำไว้ดีแล้ว) --- */
   .sidebar {
     width: 70px;
   }
@@ -601,8 +602,37 @@ body.sidebar-collapsed .sidebar-footer li a:hover::after {
     grid-template-columns: 1fr;
   }
 
+  /* --- 2. การจัดการระยะห่างในมือถือ --- */
+  .content-container {
+    padding: 15px;
+  }
+
+  /* ลด Padding ขอบจอลง */
+  .top-navbar {
+    padding: 0 15px;
+  }
+
+  /* --- 3. กล่องค้นหา (Search Box) --- */
+  .search-box {
+    flex-direction: column;
+    /* เรียงจากบนลงล่างแทนซ้ายไปขวา */
+    align-items: stretch;
+    padding: 15px;
+  }
+
+  .search-box input,
+  .search-select,
+  .btn-search,
+  .btn-reset {
+    width: 100%;
+    /* ให้ปุ่มและช่องกรอกยาวเต็มจอ */
+    margin-bottom: 5px;
+  }
+
+  /* --- 4. จัดการ Modals ให้พอดีจอมือถือ --- */
   .login-box {
     width: 90%;
+    padding: 25px;
   }
 
   .register-box {
@@ -610,9 +640,43 @@ body.sidebar-collapsed .sidebar-footer li a:hover::after {
     padding: 20px;
   }
 
+  .modal-lg {
+    width: 95%;
+    padding: 15px;
+  }
+
+  /* ป้องกัน Modal เพิ่มสินค้าล้นจอ */
+
+  /* --- 5. จัดการ Grid ฟอร์มต่างๆ ให้เรียงแถวเดียว --- */
   .form-grid {
     grid-template-columns: 1fr;
+    /* ฟอร์มที่มี 2 คอลัมน์ ให้ยุบเหลือ 1 คอลัมน์ */
   }
+
+  .add-product-layout {
+    grid-template-columns: 1fr;
+    /* เอาที่แบ่งซ้าย(ฟอร์ม) ขวา(รูป) มาเรียงบน-ล่าง */
+  }
+
+  .full-width {
+    grid-column: span 1;
+    /* ยกเลิกการควบ 2 คอลัมน์ */
+  }
+
+  /* --- 6. ย้ายกล่องอัปโหลดรูปให้แสดงผลได้สวยขึ้น --- */
+  .image-upload-section {
+    margin-top: 10px;
+    padding-top: 20px;
+    border-top: 1px solid #eee;
+  }
+}
+
+.table-scroll-container {
+  width: 100%;
+  overflow-x: auto;
+  /* หัวใจหลัก: ถ้าตารางกว้างเกินจอ ให้มีแทบเลื่อนซ้ายขวา */
+  -webkit-overflow-scrolling: touch;
+  /* ให้เลื่อนบนมือถือได้ลื่นๆ */
 }
 
 /* =========================================
@@ -783,3 +847,4 @@ body.sidebar-collapsed .sidebar-footer li a:hover::after {
 .btn-confirm-logout:hover {
   background-color: #b0021f;
 }
+

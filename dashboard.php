@@ -78,6 +78,7 @@ $res_exp = $conn->query($sql_exp);
 <html lang="th">
 
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta charset="UTF-8">
     <title>Dashboard - Onin Shop</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -262,11 +263,6 @@ $res_exp = $conn->query($sql_exp);
             gap: 25px;
         }
 
-        @media (max-width: 992px) {
-            .lower-section {
-                grid-template-columns: 1fr;
-            }
-        }
 
         .dash-box {
             background: #fff;
@@ -438,7 +434,7 @@ $res_exp = $conn->query($sql_exp);
                         <div class="box-title"><i class="fa-solid fa-clock-rotate-left"></i> ความเคลื่อนไหวล่าสุด</div>
                         <a href="ReportStock.php" style="font-size:16px; color:#2563eb; text-decoration:none; font-weight:700;">ดูทั้งหมด</a>
                     </div>
-
+                    
                     <table class="simple-table">
                         <thead>
                             <tr>
