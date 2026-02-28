@@ -77,7 +77,7 @@ $res_exp = $conn->query($sql_exp);
 <html lang="th">
 
 <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <meta charset="UTF-8">
     <title>Dashboard - Onin Shop</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -86,30 +86,25 @@ $res_exp = $conn->query($sql_exp);
     <link rel="stylesheet" href="style.css">
     <link rel='icon' type='image/png' href='favicon.png'>
 
-    <style>
-        /* === DASHBOARD STYLE (Redesign) === */
-        .content-container {
-            padding: 30px;
-            font-family: 'Prompt', sans-serif;
-            background-color: #f3f4f6;
-            min-height: 100vh;
-        }
+ <style>
+        /* =========================================================
+        DASHBOARD SPECIFIC STYLES (ส่วนเฉพาะของหน้า Dashboard)
+        ========================================================= */
 
-        .page-title {
-            font-size: 28px;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-
-        /* Grid Layout */
+        /* 1. Grid Layouts (การจัดเรียง) */
         .dashboard-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 25px;
             margin-bottom: 30px;
         }
+        .lower-section {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+        }
 
-        /* --- THE CARD DESIGN --- */
+        /* 2. The Card Design (ดีไซน์กล่องสถิติด้านบน) */
         .stat-card {
             background: #fff;
             border-radius: 12px;
@@ -123,46 +118,40 @@ $res_exp = $conn->query($sql_exp);
             border: 1px solid #f3f4f6;
             transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
-
         .stat-card:hover {
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-
         .stat-body {
             padding: 25px 25px;
             flex: 1;
             z-index: 2;
             position: relative;
         }
-
         .stat-title {
             font-size: 18px;
             font-weight: 600;
             color: #6b7280;
             margin-bottom: 5px;
         }
-
         .stat-value {
             font-size: 36px;
             font-weight: 700;
             color: #111827;
             line-height: 1.2;
         }
-
         .stat-unit {
             font-size: 16px;
             font-weight: 500;
             color: #9ca3af;
             margin-left: 5px;
         }
-
         .stat-desc {
             font-size: 14px;
             color: #9ca3af;
             margin-top: 4px;
         }
 
-        /* Icon Background (Watermark) */
+        /* Icon Background (Watermark ใน Card) */
         .stat-icon {
             position: absolute;
             right: 15px;
@@ -172,13 +161,12 @@ $res_exp = $conn->query($sql_exp);
             z-index: 1;
             transition: 0.3s;
         }
-
         .stat-card:hover .stat-icon {
             transform: scale(1.1) rotate(5deg);
             opacity: 0.15;
         }
 
-        /* Footer Bar */
+        /* Footer Bar ใน Card */
         .stat-footer {
             padding: 10px 25px;
             color: white;
@@ -191,78 +179,27 @@ $res_exp = $conn->query($sql_exp);
             z-index: 2;
             transition: background-color 0.2s;
         }
+        .stat-footer:hover { filter: brightness(90%); }
 
-        .stat-footer:hover {
-            filter: brightness(90%);
-        }
+        /* โทนสีของแต่ละ Card */
+        .card-blue .stat-value { color: #2563eb; }
+        .card-blue .stat-footer { background-color: #1a237e; }
+        .card-blue .stat-icon { color: #2563eb; }
 
-        /* Darken on hover */
+        .card-yellow .stat-value { color: #d97706; }
+        .card-yellow .stat-footer { background-color: #b7950b; }
+        .card-yellow .stat-icon { color: #d97706; }
 
-        /* Colors */
-        .card-blue .stat-val {
-            color: #2563eb;
-            font-weight: 600;
-            font-size: 18px;
-        }
+        .card-green .stat-value { color: #059669; }
+        .card-green .stat-footer { background-color: #009900; }
+        .card-green .stat-icon { color: #059669; }
 
-        .card-blue .stat-footer {
-            background-color: #1a237e;
-        }
-
-        .card-blue .stat-icon {
-            color: #2563eb;
-        }
-
-        .card-yellow .stat-val {
-            color: #d97706;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        .card-yellow .stat-footer {
-            background-color: #b7950b;
-        }
-
-        .card-yellow .stat-icon {
-            color: #d97706;
-        }
-
-        .card-green .stat-val {
-            color: #059669;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        .card-green .stat-footer {
-            background-color: #009900;
-        }
-
-        .card-green .stat-icon {
-            color: #059669;
-        }
-
-        .card-red .stat-val {
-            color: #dc2626;
-            font-weight: 600;
-            font-size: 18px;
-        }
-
-        .card-red .stat-footer {
-            background-color: #c62828;
-        }
-
-        .card-red .stat-icon {
-            color: #dc2626;
-        }
-
-        /* --- LOWER SECTION --- */
-        .lower-section {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 25px;
-        }
+        .card-red .stat-value { color: #dc2626; }
+        .card-red .stat-footer { background-color: #c62828; }
+        .card-red .stat-icon { color: #dc2626; }
 
 
+        /* 3. Dash Box (กล่องแสดงข้อมูลด้านล่าง) */
         .dash-box {
             background: #fff;
             border-radius: 12px;
@@ -271,7 +208,6 @@ $res_exp = $conn->query($sql_exp);
             border: 1px solid #f3f4f6;
             height: 100%;
         }
-
         .box-header {
             display: flex;
             justify-content: space-between;
@@ -280,7 +216,6 @@ $res_exp = $conn->query($sql_exp);
             border-bottom: 2px solid #f3f4f6;
             padding-bottom: 10px;
         }
-
         .box-title {
             font-size: 18px;
             font-weight: 700;
@@ -290,12 +225,8 @@ $res_exp = $conn->query($sql_exp);
             gap: 8px;
         }
 
-        /* Table */
-        .simple-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
+        /* 4. Simple Table (ตารางความเคลื่อนไหว) */
+        .simple-table { width: 100%; border-collapse: collapse; }
         .simple-table th {
             text-align: left;
             padding: 12px;
@@ -305,23 +236,16 @@ $res_exp = $conn->query($sql_exp);
             background: #f9fafb;
             border-radius: 6px;
         }
-
         .simple-table td {
             padding: 14px 12px;
             border-bottom: 1px solid #f3f4f6;
             color: #1f2937;
             font-size: 14px;
         }
+        .simple-table tr:last-child td { border-bottom: none; }
+        .simple-table tr:hover { background-color: #f0f7ff; }
 
-        .simple-table tr:last-child td {
-            border-bottom: none;
-        }
-
-        tr:hover {
-            background-color: #f0f7ff;
-        }
-
-        /* Badges */
+        /* 5. Badges & Expire Items (ป้ายสถานะ และ สินค้าใกล้หมดอายุ) */
         .status-badge {
             padding: 4px 10px;
             border-radius: 20px;
@@ -331,16 +255,8 @@ $res_exp = $conn->query($sql_exp);
             align-items: center;
             gap: 4px;
         }
-
-        .bg-in {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .bg-out {
-            background: #fee2e2;
-            color: #991b1b;
-        }
+        .bg-in { background: #d1fae5; color: #065f46; }
+        .bg-out { background: #fee2e2; color: #991b1b; }
 
         .expire-item {
             display: flex;
@@ -349,7 +265,6 @@ $res_exp = $conn->query($sql_exp);
             padding: 12px 0;
             border-bottom: 1px dashed #e5e7eb;
         }
-
         .expire-days {
             background: #fee2e2;
             color: #dc2626;
@@ -358,7 +273,20 @@ $res_exp = $conn->query($sql_exp);
             font-size: 12px;
             font-weight: 700;
         }
-    </style>
+
+
+        /* =========================================================
+        6. RESPONSIVE DASHBOARD (มือถือและแท็บเล็ต)
+        ========================================================= */
+        @media (max-width: 991px) {
+            /* ดึง Sidebar ออกมาแสดง */
+            
+            /* บังคับให้ Grid ทุกอย่างเรียงแถวเดียวจากบนลงล่าง */
+            .dashboard-grid, .lower-section {
+                grid-template-columns: 1fr !important;
+            }
+        }
+</style>
 </head>
 
 <body>
