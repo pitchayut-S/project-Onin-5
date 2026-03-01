@@ -40,6 +40,20 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $exp_date      = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
         $quantity      = intval($_POST['quantity']);
 
+        // [เพิ่มใหม่] ตรวจสอบราคาทุนและราคาขาย ห้ามติดลบ
+        if ($cost < 0 || $selling_price < 0) {
+            $_SESSION['msg_error'] = "ไม่สามารถบันทึกได้! ราคาทุนและราคาขายต้องไม่ติดลบ";
+            header("Location: product_list.php");
+            exit();
+        }
+
+        // [เพิ่มใหม่] ตรวจสอบจำนวนสต๊อกด้วย (แถมให้ครับ เพื่อป้องกันกรอกจำนวนติดลบ)
+        if ($quantity < 0) {
+            $_SESSION['msg_error'] = "ไม่สามารถบันทึกได้! จำนวนสินค้าต้องไม่ติดลบ";
+            header("Location: product_list.php");
+            exit();
+        }
+
         // [เพิ่มใหม่] ตรวจสอบว่าชื่อสินค้าซ้ำหรือไม่
         $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ?");
         $check_stmt->bind_param("s", $name);
@@ -118,6 +132,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $redirect_url .= "?" . implode("&", $params);
         }
 
+        // [เพิ่มใหม่] ตรวจสอบราคาทุน, ราคาขาย และจำนวน ห้ามติดลบเด็ดขาด!
+        if ($cost < 0 || $selling_price < 0) {
+            $_SESSION['msg_error'] = "ไม่สามารถแก้ไขได้! ราคาทุนและราคาขายต้องไม่ติดลบ";
+            header("Location: " . $redirect_url);
+            exit();
+        }
+
+        if ($new_quantity < 0) {
+            $_SESSION['msg_error'] = "ไม่สามารถแก้ไขได้! จำนวนสินค้าต้องไม่ติดลบ";
+            header("Location: " . $redirect_url);
+            exit();
+        }
+        
         // [เพิ่มใหม่] ตรวจสอบว่าชื่อสินค้าซ้ำกับรายการอื่นหรือไม่ (ไม่รวมตัวเอง)
         $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND id != ?");
         $check_stmt->bind_param("si", $name, $id);
