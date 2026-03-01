@@ -27,7 +27,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $unit          = $_POST['unit'];
         $cost          = $_POST['cost'];
         $selling_price = $_POST['selling_price'];
-        $format_date = function($d) {
+        $format_date = function ($d) {
             if (!is_string($d)) return null;
             $d = trim($d);
             if (empty($d)) return null;
@@ -111,7 +111,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $unit          = $_POST['unit'];
         $new_quantity  = intval($_POST['quantity']);
         $cost          = floatval($_POST['cost']);
-        $format_date = function($d) {
+        $format_date = function ($d) {
             if (!is_string($d)) return null;
             $d = trim($d);
             if (empty($d)) return null;
@@ -153,7 +153,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             header("Location: " . $redirect_url);
             exit();
         }
-        
+
         // ตรวจสอบว่าชื่อสินค้าซ้ำกับรายการอื่นหรือไม่
         $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND id != ?");
         $check_stmt->bind_param("si", $name, $id);
@@ -195,7 +195,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($_FILES["image"]["error"] == 0) {
                 $ext = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
                 $new_img_name = uniqid("img_") . "." . $ext;
-                
+
                 if (move_uploaded_file($_FILES["image"]["tmp_name"], "uploads/" . $new_img_name)) {
                     // ลบรูปเดิมออก
                     if (!empty($old_image) && file_exists("uploads/" . $old_image)) {
@@ -317,43 +317,306 @@ $products = $conn->query($sql);
     <link rel='icon' type='image/png' href='favicon.png'>
 
     <style>
-        .content-container { padding: 30px; background-color: #f3f4f6; font-family: 'Prompt', sans-serif; min-height: 100vh; }
-        .page-title { font-size: 28px; font-weight: 700; margin-bottom: 20px; }
-        .search-box { background: #fff; padding: 18px 20px; border-radius: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); margin-bottom: 20px; }
-        .search-box input { flex: 1; border: none; background: #eef2f6; padding: 12px 14px; border-radius: 10px; font-size: 14px; min-width: 200px; }
-        .search-select { border: none; background: #eef2f6; padding: 12px 14px; border-radius: 10px; font-size: 14px; font-family: 'Prompt', sans-serif; cursor: pointer; min-width: 150px; }
-        .btn-search { background: #356CB5; color: white; padding: 10px 18px; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; }
-        .btn-reset { background: #e7ebf0; padding: 10px 16px; border-radius: 10px; text-decoration: none; color: #333; display: flex; align-items: center; }
-        .table-scroll-container { width: 100%; max-height: 65vh; overflow-y: auto; overflow-x: auto; background: #fff; border-radius: 14px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04); position: relative; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; }
-        th, td { padding: 14px 12px; border-bottom: 1px solid #eee; }
-        th { background: #f3f6fb; font-weight: 600; position: sticky; top: 0; z-index: 10; box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1); }
-        tr:hover { background-color: #a1c9ff1f; }
-        .product-img { width: 65px; height: 65px; object-fit: cover; border-radius: 12px; border: 1px solid #ddd; }
-        .badge { padding: 6px 12px; font-size: 12px; font-weight: 600; border-radius: 20px; }
-        .stock-ok { background: #e6f6ed; color: #1b9c5a; }
-        .stock-low { background: #fdecea; color: #c0392b; }
-        .btn-edit { background: #f1c40f; padding: 7px 5px; color: white; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; }
-        .btn-delete { background: #e74c3c; padding: 7px 5px; color: white; border-radius: 8px; border: none; cursor: pointer; font-size: 14px; }
-        .pagination-container { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding: 0 10px; }
-        .pagination { display: flex; gap: 5px; }
-        .pagination a { padding: 8px 12px; border: 1px solid #ddd; border-radius: 8px; text-decoration: none; color: #333; background: white; transition: 0.2s; font-size: 14px; }
-        .pagination a:hover { background-color: #f1f1f1; }
-        .pagination a.active { background-color: #356CB5; color: white; border-color: #356CB5; }
-        .text-muted { color: #666; font-size: 14px; }
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(2px); }
-        .modal-content { background-color: #fff; margin: 5% auto; padding: 25px; border: 1px solid #888; width: 90%; max-width: 600px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); animation: slideDown 0.3s ease-out; font-family: 'Prompt', sans-serif; position: relative; }
-        @keyframes slideDown { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .close { position: absolute; right: 20px; top: 20px; color: #aaa; font-size: 30px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: #000; }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .full-width { grid-column: span 2; }
-        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #333; font-size: 14px; }
-        .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; box-sizing: border-box; }
-        .btn-submit { width: 100%; background: #28a745; color: white; padding: 12px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; margin-top: 15px; }
-        .btn-submit:hover { background: #218838; }
-        .text-truncate-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; max-width: 250px; line-height: 1.4; word-break: break-word; }
-        .text-truncate-1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+        .content-container {
+            padding: 30px;
+            background-color: #f3f4f6;
+            font-family: 'Prompt', sans-serif;
+            min-height: 100vh;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            background: #fff;
+            padding: 18px 20px;
+            border-radius: 14px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            flex: 1;
+            border: none;
+            background: #eef2f6;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            min-width: 200px;
+        }
+
+        .search-select {
+            border: none;
+            background: #eef2f6;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: 'Prompt', sans-serif;
+            cursor: pointer;
+            min-width: 150px;
+        }
+
+        .btn-search {
+            background: #356CB5;
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .btn-reset {
+            background: #e7ebf0;
+            padding: 10px 16px;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #333;
+            display: flex;
+            align-items: center;
+        }
+
+        .table-scroll-container {
+            width: 100%;
+            max-height: 65vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+            position: relative;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        th,
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f3f6fb;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            box-shadow: 0 2px 2px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        tr:hover {
+            background-color: #a1c9ff1f;
+        }
+
+        .product-img {
+            width: 65px;
+            height: 65px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 1px solid #ddd;
+        }
+
+        .badge {
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 20px;
+        }
+
+        .stock-ok {
+            background: #e6f6ed;
+            color: #1b9c5a;
+        }
+
+        .stock-low {
+            background: #fdecea;
+            color: #c0392b;
+        }
+
+        .btn-edit {
+            background: #f1c40f;
+            padding: 7px 5px;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-delete {
+            background: #e74c3c;
+            padding: 7px 5px;
+            color: white;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding: 0 10px;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 5px;
+        }
+
+        .pagination a {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #333;
+            background: white;
+            transition: 0.2s;
+            font-size: 14px;
+        }
+
+        .pagination a:hover {
+            background-color: #f1f1f1;
+        }
+
+        .pagination a.active {
+            background-color: #356CB5;
+            color: white;
+            border-color: #356CB5;
+        }
+
+        .text-muted {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 25px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            animation: slideDown 0.3s ease-out;
+            font-family: 'Prompt', sans-serif;
+            position: relative;
+        }
+
+        @keyframes slideDown {
+            from {
+                transform: translateY(-30px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            color: #aaa;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .full-width {
+            grid-column: span 2;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background: #28a745;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 15px;
+        }
+
+        .btn-submit:hover {
+            background: #218838;
+        }
+
+        .text-truncate-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .text-truncate-1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
     </style>
 </head>
 
@@ -700,7 +963,7 @@ $products = $conn->query($sql);
 
             document.getElementById('edit_old_image').value = data.image;
             document.getElementById('show_old_image_name').innerText = data.image ? data.image : "-ไม่มีรูป-";
-            
+
             // สำคัญ! ล้างไฟล์ที่อาจจะค้างอยู่ในปุ่ม "เลือกไฟล์"
             document.getElementById('edit_image').value = "";
         }
