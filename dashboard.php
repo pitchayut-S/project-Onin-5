@@ -80,7 +80,7 @@ $res_exp = $conn->query($sql_exp);
 <head>
     
     <meta charset="UTF-8">
-    <title>Dashboard - Onin Shop</title>
+    <title>แดชบอร์ด - Onin Shop</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -299,7 +299,7 @@ $res_exp = $conn->query($sql_exp);
 
         <div class="content-container">
 
-            <div class="page-title">Dashboard ภาพรวม</div>
+            <div class="page-title">แดชบอร์ด ภาพรวม</div>
 
             <div class="dashboard-grid">
 

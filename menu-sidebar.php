@@ -2,7 +2,7 @@
 // รายการเมนูสำหรับ Sidebar (ใช้วนลูปแสดงทุกหน้า)
 $menu_config = [
     [
-        'name' => 'Dashboard',
+        'name' => 'แดชบอร์ด',
         'icon' => 'fa-solid fa-chart-line',
         'link' => 'dashboard.php',
     ],
