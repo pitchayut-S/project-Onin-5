@@ -350,7 +350,6 @@ $query_users = $conn->query($sql);
 
         .form-control:read-only {
             background-color: #f2f2f2;
-            cursor: not-allowed;
             color: #777;
         }
 
