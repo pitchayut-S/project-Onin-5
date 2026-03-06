@@ -50,7 +50,7 @@ $result = $conn->query($sql);
 
 <head>
     <meta charset="UTF-8">
-    <title>รายงานประวัติสต๊อก - Onin Shop</title>
+    <title>รายงานประวัติสต็อก - Onin Shop</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
@@ -398,7 +398,7 @@ $result = $conn->query($sql);
 
         <div class="content-container">
 
-            <div class="page-title">ประวัติการปรับสต๊อก</div>
+            <div class="page-title">ประวัติการปรับสต็อก</div>
 
             <form class="search-box" method="get">
                 <input type="text" name="search" class="search-input-main"

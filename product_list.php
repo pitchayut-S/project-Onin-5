@@ -682,7 +682,7 @@ $products = $conn->query($sql);
                             $i = $start + 1;
                             while ($row = $products->fetch_assoc()):
                                 $stock_class = $row['quantity'] > 0 ? "stock-ok" : "stock-low";
-                                $stock_label = $row['quantity'] > 0 ? "มีสต๊อก" : "หมด";
+                                $stock_label = $row['quantity'] > 0 ? "มีสต็อก" : "หมด";
                             ?>
                                 <tr>
                                     <td style="text-align:center;"><?= $i++ ?></td>

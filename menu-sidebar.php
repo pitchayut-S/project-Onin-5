@@ -17,7 +17,7 @@ $menu_config = [
         'link' => 'category_list.php',
     ],
     [
-        'name' => 'สต๊อกสินค้า',
+        'name' => 'สต็อกสินค้า',
         'icon' => 'fa-solid fa-cart-shopping',
         'link' => 'product_Stock.php',
     ],
@@ -27,7 +27,7 @@ $menu_config = [
         'link' => 'ProductPoppular.php',
     ],
     [
-        'name' => 'ประวัติปรับสต๊อก',
+        'name' => 'ประวัติปรับสต็อก',
         'icon' => 'fa-solid fa-clock-rotate-left',
         'link' => 'ReportStock.php',
     ],

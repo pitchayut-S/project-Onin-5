@@ -137,7 +137,7 @@ $products = $conn->query($sql);
 
 <head>
     <meta charset="UTF-8">
-    <title>สต๊อกสินค้า - Onin Shop Stock</title>
+    <title>สต็อกสินค้า - Onin Shop Stock</title>
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -525,7 +525,7 @@ $products = $conn->query($sql);
         <?php include "topbar.php"; ?>
 
         <div class="content-container">
-            <div class="page-title">สต๊อกสินค้า</div>
+            <div class="page-title">สต็อกสินค้า</div>
 
             <?php
             if (isset($_SESSION['first_login']) && $_SESSION['first_login'] === true) {
@@ -620,7 +620,7 @@ $products = $conn->query($sql);
                                     <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?></td>
                                     <td>
                                         <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
-                                            <i class="fa-solid fa-pen-to-square"></i> ปรับสต๊อก
+                                            <i class="fa-solid fa-pen-to-square"></i> ปรับสต็อก
                                         </button>
                                     </td>
                                 </tr>
@@ -670,7 +670,7 @@ $products = $conn->query($sql);
     <div id="stockModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="closeStockModal()">&times;</span>
-            <h3 style="margin-top:0; color:#333;">ปรับสต๊อกสินค้า</h3>
+            <h3 style="margin-top:0; color:#333;">ปรับสต็อกสินค้า</h3>
             <p id="modal_product_name" style="color:#666; font-size:14px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;"></p>
 
             <form method="post" action="">
@@ -689,10 +689,10 @@ $products = $conn->query($sql);
                     <label>เลือกการทำรายการ</label>
                     <div class="adjust-options">
                         <input type="radio" id="type_add" name="adj_type" value="add" class="adjust-radio" onchange="updateReasonOptions()" checked>
-                        <label for="type_add" class="adjust-label"><i class="fa-solid fa-plus"></i> เพิ่มสต๊อก</label>
+                        <label for="type_add" class="adjust-label"><i class="fa-solid fa-plus"></i> เพิ่มสต็อก</label>
 
                         <input type="radio" id="type_reduce" name="adj_type" value="reduce" class="adjust-radio" onchange="updateReasonOptions()">
-                        <label for="type_reduce" class="adjust-label"><i class="fa-solid fa-minus"></i> ลดสต๊อก</label>
+                        <label for="type_reduce" class="adjust-label"><i class="fa-solid fa-minus"></i> ลดสต็อก</label>
                     </div>
                 </div>
 

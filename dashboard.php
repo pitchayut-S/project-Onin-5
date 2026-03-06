@@ -478,7 +478,7 @@ $res_exp = $conn->query($sql_exp);
                 <div class="stat-card card-red">
                     <i class="fa-solid fa-triangle-exclamation stat-icon"></i>
                     <div class="stat-body">
-                        <div class="stat-title">สินค้าใกล้หมด / ค้างสต๊อก</div>
+                        <div class="stat-title">สินค้าใกล้หมด / ค้างสต็อก</div>
                         <div class="stat-val"><?= number_format($low_stock_count) ?> <span class="stat-unit">รายการ</span></div>
                         <div class="stat-desc">รายการที่เหลือน้อยกว่า 10</div>
                     </div>
@@ -541,7 +541,7 @@ $res_exp = $conn->query($sql_exp);
                 <div style="display:flex; flex-direction:column; gap:25px;">
                     <div class="dash-box">
                         <div class="box-header">
-                            <div class="box-title"><i class="fa-solid fa-chart-pie" style="color:#d97706;"></i>สต๊อกคงเหลือ (แยกตามหมวดหมู่)</div>
+                            <div class="box-title"><i class="fa-solid fa-chart-pie" style="color:#d97706;"></i>สต็อกคงเหลือ (แยกตามหมวดหมู่)</div>
                         </div>
                         <div style="height:200px; width:100%; display:flex; justify-content:center;">
                             <canvas id="catChart"></canvas>
