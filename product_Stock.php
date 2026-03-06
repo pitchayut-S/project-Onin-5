@@ -274,7 +274,7 @@ $products = $conn->query($sql);
 
         th,
         td {
-            padding: 14px 12px;
+            padding: 10px 5px;
             border-bottom: 1px solid #eee;
         }
 
@@ -714,7 +714,7 @@ $products = $conn->query($sql);
                         </span>
                     </label>
                     <input type="number" id="amount_input" name="amount" class="form-control" placeholder="ระบุจำนวน" min="1" oninput="calculateNewQty()" required>
-                    
+
                     <div id="preview-box" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 8px; text-align: center; display: none;">
                         <span style="color: #555; font-size: 14px;">ยอดคงเหลือหลังปรับ: </span>
                         <strong id="preview_qty" style="font-size: 20px; color: #356CB5;">0</strong>
@@ -792,7 +792,7 @@ $products = $conn->query($sql);
                 supplierGroup.style.display = "none";
                 amountInput.setAttribute('max', currentStockQty); // ถ้าลดสต๊อก ห้ามลดเกินที่มี
             }
-            
+
             calculateNewQty(); // คำนวณใหม่เมื่อเปลี่ยนประเภท เพิ่ม/ลด
         }
 
@@ -805,9 +805,9 @@ $products = $conn->query($sql);
             if (inputVal > 0) {
                 previewBox.style.display = "block";
                 let newQty = isAdd ? currentStockQty + inputVal : currentStockQty - inputVal;
-                
+
                 // กันติดลบ
-                if(newQty < 0) newQty = 0; 
+                if (newQty < 0) newQty = 0;
 
                 previewQty.innerText = new Intl.NumberFormat().format(newQty);
                 previewQty.style.color = isAdd ? '#27ae60' : '#e74c3c'; // สีเขียวถ้าเพิ่ม สีแดงถ้าลด
@@ -832,7 +832,7 @@ $products = $conn->query($sql);
             document.getElementById('preview-box').style.display = "none";
             document.querySelector('input[name="supplier"]').value = '';
             document.getElementById('type_add').checked = true;
-            
+
             updateReasonOptions();
         }
 

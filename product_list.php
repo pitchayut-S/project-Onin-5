@@ -402,7 +402,7 @@ $products = $conn->query($sql);
 
         th,
         td {
-            padding: 14px 12px;
+            padding: 10px 5px!important;
             border-bottom: 1px solid #eee;
         }
 

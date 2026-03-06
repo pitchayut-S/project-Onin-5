@@ -315,7 +315,7 @@ $res_exp = $conn->query($sql_exp);
         .dash-box {
             background: #fff;
             border-radius: 12px;
-            padding: 25px;
+            padding: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             border: 1px solid #f3f4f6;
             height: 100%;
@@ -433,7 +433,7 @@ $res_exp = $conn->query($sql_exp);
 
         <div class="content-container">
 
-            <div class="page-title">แดชบอร์ด ภาพรวม</div>
+            <div class="page-title">แดชบอร์ดภาพรวม</div>
 
             <div class="dashboard-grid">
 
