@@ -47,7 +47,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             exit();
         }
 
-        // ตรวจสอบจำนวนสต๊อกด้วย ห้ามติดลบ
+        // ตรวจสอบจำนวนสต็อกด้วย ห้ามติดลบ
         if ($quantity < 0) {
             $_SESSION['msg_error'] = "ไม่สามารถบันทึกได้! จำนวนสินค้าต้องไม่ติดลบ";
             header("Location: product_list.php");
@@ -109,7 +109,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $name          = trim($_POST['name']);
         $category      = $_POST['category'];
         $unit          = $_POST['unit'];
-        $new_quantity  = intval($_POST['quantity']);
         $cost          = floatval($_POST['cost']);
         $format_date = function ($d) {
             if (!is_string($d)) return null;
@@ -148,12 +147,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             exit();
         }
 
-        if ($new_quantity < 0) {
-            $_SESSION['msg_error'] = "ไม่สามารถแก้ไขได้! จำนวนสินค้าต้องไม่ติดลบ";
-            header("Location: " . $redirect_url);
-            exit();
-        }
-
         // ตรวจสอบว่าชื่อสินค้าซ้ำกับรายการอื่นหรือไม่
         $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND id != ?");
         $check_stmt->bind_param("si", $name, $id);
@@ -166,10 +159,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $check_stmt->close();
 
         // 1. ตรวจสอบหมวดหมู่เดิม
-        $q_check = $conn->query("SELECT category, quantity FROM products WHERE id = $id");
+        $q_check = $conn->query("SELECT category FROM products WHERE id = $id");
         $row_check = $q_check->fetch_assoc();
         $old_category = $row_check['category'];
-        $old_qty = intval($row_check['quantity']);
 
         // 2. ถ้าเปลี่ยนหมวดหมู่ -> เปลี่ยนรหัสสินค้าใหม่
         if ($category != $old_category) {
@@ -215,23 +207,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // อัปเดตข้อมูล
-        $sql = "UPDATE products SET product_code=?, name=?, category=?, unit=?, quantity=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?";
+        $sql = "UPDATE products SET product_code=?, name=?, category=?, unit=?, selling_price=?, cost=?, exp_date=?, image=? WHERE id=?";
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("ssssiddssi", $product_code, $name, $category, $unit, $new_quantity, $selling_price, $cost, $exp_date, $image_name, $id);
+        $stmt->bind_param("ssssddssi", $product_code, $name, $category, $unit, $selling_price, $cost, $exp_date, $image_name, $id);
 
         if ($stmt->execute()) {
-            // บันทึก Log การเปลี่ยนแปลงสต็อก
-            if ($new_quantity != $old_qty) {
-                $diff = $new_quantity - $old_qty;
-                $type = ($diff > 0) ? 'add' : 'reduce';
-                $amount = abs($diff);
-                $balance = $new_quantity;
-                $username = $_SESSION['username'];
-                $reason = "แก้ไขข้อมูลสินค้า (ปรับยอด)";
-                $stmt_tr = $conn->prepare("INSERT INTO stock_transactions (product_id, type, amount, balance, username, reason, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-                $stmt_tr->bind_param("isiis", $id, $type, $amount, $balance, $username, $reason);
-                $stmt_tr->execute();
-            }
             $_SESSION['msg_success'] = "แก้ไขข้อมูลสำเร็จ";
         } else {
             $_SESSION['msg_error'] = "เกิดข้อผิดพลาด: " . $stmt->error;
@@ -910,7 +890,8 @@ $products = $conn->query($sql);
                     </div>
                     <div class="form-group">
                         <label>จำนวนคงเหลือ</label>
-                        <input type="number" id="edit_quantity" name="quantity" class="form-control" required>
+                        <input type="number" id="edit_quantity" name="quantity" class="form-control" readonly style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" required>
+                        <small style="color:red; font-size:12px;">* ปรับจำนวนสต็อกได้ที่เมนู "สต็อกสินค้า" เท่านั้น</small>
                     </div>
                     <div class="form-group">
                         <label>วันหมดอายุ</label>
