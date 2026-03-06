@@ -77,7 +77,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['action']) && $_POST['
                                         SET product_code = CONCAT(?, '-', SUBSTRING_INDEX(product_code, '-', -1)) 
                                         WHERE category = ?";
                 $stmt_prod = $conn->prepare($sql_update_products);
-                $stmt_prod->bind_param("si", $prefix, $id); 
+                $stmt_prod->bind_param("si", $prefix, $id);
                 $stmt_prod->execute();
                 $stmt_prod->close();
                 // =========================================================================
@@ -340,7 +340,8 @@ $categories = $conn->query($sql);
             </div>
 
             <form class="search-box" method="get">
-                <input type="text" name="search" placeholder="ค้นหาชื่อประเภทสินค้า / Prefix" value="<?= htmlspecialchars($search_text) ?>">
+                <input type="text" name="search" placeholder="ค้นหาชื่อประเภทสินค้า / Prefix"
+                    value="<?= htmlspecialchars($search_text) ?>">
                 <button class="btn-search">ค้นหา</button>
                 <?php if ($search_text !== ""): ?>
                     <a href="category_list.php" class="btn-reset">ล้าง</a>
@@ -363,7 +364,9 @@ $categories = $conn->query($sql);
                             while ($row = $categories->fetch_assoc()): ?>
                                 <tr>
                                     <td><?= $i++ ?></td>
-                                    <td><span style="background:#eef2f6; padding:4px 8px; border-radius:6px; font-weight:500;"><?= $row['prefix'] ?></span></td>
+                                    <td><span
+                                            style="background:#eef2f6; padding:4px 8px; border-radius:6px; font-weight:500;"><?= $row['prefix'] ?></span>
+                                    </td>
                                     <td><?= $row['category_name'] ?></td>
                                     <td>
                                         <button class="btn-edit" onclick='openEditModal(<?php echo json_encode($row); ?>)'>
@@ -404,7 +407,8 @@ $categories = $conn->query($sql);
 
                 <div class="form-group">
                     <label>ชื่อประเภทสินค้า</label>
-                    <input type="text" name="category_name" class="form-control" placeholder="เช่น เครื่องใช้ไฟฟ้า" required>
+                    <input type="text" name="category_name" class="form-control" placeholder="เช่น เครื่องใช้ไฟฟ้า"
+                        required>
                 </div>
 
                 <button type="submit" class="btn-submit">บันทึกข้อมูล</button>
@@ -457,7 +461,7 @@ $categories = $conn->query($sql);
         }
 
         // ปิดเมื่อคลิกพื้นหลัง
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = "none";
             }
@@ -494,7 +498,7 @@ $categories = $conn->query($sql);
                 timerProgressBar: true
             });
         </script>
-    <?php unset($_SESSION['swal']);
+            <?php unset($_SESSION['swal']);
     endif; ?>
 
 </body>
