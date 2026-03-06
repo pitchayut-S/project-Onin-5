@@ -288,22 +288,27 @@ $chart_values = array_column($monthly_sales_data, 'value');
         }
 
         .card-code {
-            font-size: 12px;
-            color: #95a5a6;
-            margin-bottom: 5px;
-        }
+    font-size: 12px;
+    color: #95a5a6;
+    margin-bottom: 5px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
         .card-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: -15px;
-            height: 50px;
-            overflow: hidden;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-        }
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: -15px;
+    height: 50px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
 
         .card-price {
             color: #e67e22;
