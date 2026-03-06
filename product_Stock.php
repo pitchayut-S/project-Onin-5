@@ -52,9 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     // รีเฟรชหน้าเดิม (ส่งค่าค้นหากลับไปด้วย)
     $redirect_url = "product_Stock.php";
     $params = [];
-    if (isset($_GET['filter'])) $params[] = "filter=" . $_GET['filter'];
-    if (isset($_GET['search'])) $params[] = "search=" . $_GET['search'];
-    if (isset($_GET['search_category'])) $params[] = "search_category=" . $_GET['search_category'];
+    if (isset($_GET['filter']))
+        $params[] = "filter=" . $_GET['filter'];
+    if (isset($_GET['search']))
+        $params[] = "search=" . $_GET['search'];
+    if (isset($_GET['search_category']))
+        $params[] = "search_category=" . $_GET['search_category'];
 
     if (!empty($params)) {
         $redirect_url .= "?" . implode("&", $params);
@@ -85,8 +88,9 @@ while ($cat = $cate_query->fetch_assoc()) {
 
 // ตั้งค่า Pagination
 $limit = 20;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-if ($page < 1) $page = 1;
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+if ($page < 1)
+    $page = 1;
 $start = ($page - 1) * $limit;
 
 // รับค่าตัวแปรค้นหา
@@ -117,6 +121,7 @@ if ($filter === "outofstock") {
 if ($filter === "expired") {
     $condition_sql .= " AND p.exp_date < CURDATE() AND p.exp_date != '0000-00-00'";
 }
+$condition_sql .= " AND p.is_deleted = 0";
 
 // 1. หาจำนวนรายการทั้งหมด (Count)
 $sql_count = "SELECT COUNT(*) as total FROM products p LEFT JOIN product_category c ON p.category = c.id" . $condition_sql;
@@ -529,7 +534,7 @@ $products = $conn->query($sql);
 
             <?php
             if (isset($_SESSION['first_login']) && $_SESSION['first_login'] === true) {
-                $low = $conn->query("SELECT COUNT(*) AS total FROM products WHERE quantity > 0 AND quantity <= 10");
+                $low = $conn->query("SELECT COUNT(*) AS total FROM products WHERE quantity > 0 AND quantity <= 10 AND is_deleted = 0");
                 $row_low = $low->fetch_assoc();
                 if ($row_low['total'] > 0) {
                     echo "<script>Swal.fire({icon: 'warning', title: 'สินค้าใกล้หมด!', text: 'มีสินค้าใกล้หมดจำนวน {$row_low['total']} รายการ', confirmButtonText: 'รับทราบ', confirmButtonColor: '#f1c40f'});</script>";
@@ -544,16 +549,21 @@ $products = $conn->query($sql);
             ?>
 
             <div class="filter-buttons">
-                <a href="product_Stock.php?filter=all" class="btn-all <?= $filter == 'all' ? 'active' : '' ?>">สินค้าทั้งหมด</a>
-                <a href="product_Stock.php?filter=lowstock" class="btn-low <?= $filter == 'lowstock' ? 'active' : '' ?>">สินค้าใกล้หมด</a>
-                <a href="product_Stock.php?filter=outofstock" class="btn-out <?= $filter == 'outofstock' ? 'active' : '' ?>">สินค้าหมด</a>
-                <a href="product_Stock.php?filter=expired" class="btn-expired <?= $filter == 'expired' ? 'active' : '' ?>">สินค้าหมดอายุ</a>
+                <a href="product_Stock.php?filter=all"
+                    class="btn-all <?= $filter == 'all' ? 'active' : '' ?>">สินค้าทั้งหมด</a>
+                <a href="product_Stock.php?filter=lowstock"
+                    class="btn-low <?= $filter == 'lowstock' ? 'active' : '' ?>">สินค้าใกล้หมด</a>
+                <a href="product_Stock.php?filter=outofstock"
+                    class="btn-out <?= $filter == 'outofstock' ? 'active' : '' ?>">สินค้าหมด</a>
+                <a href="product_Stock.php?filter=expired"
+                    class="btn-expired <?= $filter == 'expired' ? 'active' : '' ?>">สินค้าหมดอายุ</a>
             </div>
 
             <form class="search-box" method="get" action="product_Stock.php">
                 <input type="hidden" name="filter" value="<?= $filter ?>">
 
-                <input type="text" name="search" placeholder="ค้นหา (ชื่อ / รหัสสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+                <input type="text" name="search" placeholder="ค้นหา (ชื่อ / รหัสสินค้า)"
+                    value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
 
                 <select name="search_category" class="search-select">
                     <option value="">-- ทุกหมวดหมู่ --</option>
@@ -600,26 +610,34 @@ $products = $conn->query($sql);
                                 }
 
                                 $expired = ($row['exp_date'] != '0000-00-00' && $row['exp_date'] < date("Y-m-d"));
-                        ?>
-                                <tr>
+                                ?>
+                                        <tr>
                                     <td><?= $i++ ?></td>
                                     <td><?= $row['product_code'] ?></td>
-                                    <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
+                                    <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>"
+                                                class="product-img"><?php else: ?><span
+                                                style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
                                     <td>
                                         <?= $row['name'] ?>
                                         <?php if ($expired): ?>
-                                            <br><span style="color:red; font-size:11px; font-weight:bold;"><i class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
+                                            <br><span style="color:red; font-size:11px; font-weight:bold;"><i
+                                                    class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?= $row['category_name'] ?></td>
                                     <td>
                                         <span class="badge <?= $badge ?>">
-                                            <?= number_format($row['quantity']) ?> <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
+                                            <?= number_format($row['quantity']) ?>
+                                            <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
                                         </span>
                                     </td>
-                                    <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?></td>
+                                    <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>">
+                                                <?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?>
+                                    </td>
                                     <td>
-                                        <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
+                                        <button type="button"
+                                            onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')"
+                                            class="btn-adjust">
                                             <i class="fa-solid fa-pen-to-square"></i> ปรับสต็อก
                                         </button>
                                     </td>
@@ -637,28 +655,34 @@ $products = $conn->query($sql);
             <?php if ($total_pages > 1): ?>
                 <div class="pagination-container">
                     <div class="text-muted">
-                        แสดง <?= $products->num_rows ?> รายการ (จากทั้งหมด <?= number_format($total_records) ?>) - หน้า <?= $page ?> / <?= $total_pages ?>
+                        แสดง <?= $products->num_rows ?> รายการ (จากทั้งหมด <?= number_format($total_records) ?>) - หน้า
+                        <?= $page ?> / <?= $total_pages ?>
                     </div>
                     <div class="pagination">
                         <?php if ($page > 1): ?>
-                            <a href="?page=1&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="หน้าแรก"><i class="fa-solid fa-angles-left"></i> หน้าแรก</a>
-                            <a href="?page=<?= $page - 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="ย้อนกลับ"><i class="fa-solid fa-angle-left"></i></a>
+                            <a href="?page=1&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                                title="หน้าแรก"><i class="fa-solid fa-angles-left"></i> หน้าแรก</a>
+                            <a href="?page=<?= $page - 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                                title="ย้อนกลับ"><i class="fa-solid fa-angle-left"></i></a>
                         <?php endif; ?>
 
-                        <?php
-                        $range = 2;
-                        for ($p = 1; $p <= $total_pages; $p++):
-                            if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
-                        ?>
-                                <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" class="<?= $page == $p ? 'active' : '' ?>"><?= $p ?></a>
+                            <?php
+                            $range = 2;
+                            for ($p = 1; $p <= $total_pages; $p++):
+                                if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
+                                    ?>
+                                            <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                                    class="<?= $page == $p ? 'active' : '' ?>"><?= $p ?></a>
                             <?php elseif (($p == $page - $range - 1) || ($p == $page + $range + 1)): ?>
                                 <span style="padding:8px; color:#999;">...</span>
-                        <?php endif;
-                        endfor; ?>
+                                    <?php endif;
+                            endfor; ?>
 
                         <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?= $page + 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="ถัดไป"><i class="fa-solid fa-angle-right"></i></a>
-                            <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>" title="หน้าสุดท้าย">หน้าสุดท้าย <i class="fa-solid fa-angles-right"></i></a>
+                            <a href="?page=<?= $page + 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                                title="ถัดไป"><i class="fa-solid fa-angle-right"></i></a>
+                            <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                                title="หน้าสุดท้าย">หน้าสุดท้าย <i class="fa-solid fa-angles-right"></i></a>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -671,7 +695,9 @@ $products = $conn->query($sql);
         <div class="modal-content">
             <span class="close" onclick="closeStockModal()">&times;</span>
             <h3 style="margin-top:0; color:#333;">ปรับสต็อกสินค้า</h3>
-            <p id="modal_product_name" style="color:#666; font-size:14px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;"></p>
+            <p id="modal_product_name"
+                style="color:#666; font-size:14px; margin-bottom:15px; border-bottom:1px solid #eee; padding-bottom:10px;">
+            </p>
 
             <form method="post" action="">
                 <input type="hidden" name="action" value="update_stock">
@@ -680,7 +706,8 @@ $products = $conn->query($sql);
                 <div class="form-group" style="text-align:center;">
                     <label style="font-size:14px; color:#888;">คงเหลือปัจจุบัน</label>
                     <div style="display:flex; align-items:baseline; justify-content:center; gap:5px;">
-                        <h1 id="modal_current_qty" style="color:#3498db; margin:0; font-size:48px; line-height:1;">0</h1>
+                        <h1 id="modal_current_qty" style="color:#3498db; margin:0; font-size:48px; line-height:1;">0
+                        </h1>
                         <span id="modal_unit" style="color:#666; font-size:14px;">หน่วย</span>
                     </div>
                 </div>
@@ -688,10 +715,12 @@ $products = $conn->query($sql);
                 <div class="form-group">
                     <label>เลือกการทำรายการ</label>
                     <div class="adjust-options">
-                        <input type="radio" id="type_add" name="adj_type" value="add" class="adjust-radio" onchange="updateReasonOptions()" checked>
+                        <input type="radio" id="type_add" name="adj_type" value="add" class="adjust-radio"
+                            onchange="updateReasonOptions()" checked>
                         <label for="type_add" class="adjust-label"><i class="fa-solid fa-plus"></i> เพิ่มสต็อก</label>
 
-                        <input type="radio" id="type_reduce" name="adj_type" value="reduce" class="adjust-radio" onchange="updateReasonOptions()">
+                        <input type="radio" id="type_reduce" name="adj_type" value="reduce" class="adjust-radio"
+                            onchange="updateReasonOptions()">
                         <label for="type_reduce" class="adjust-label"><i class="fa-solid fa-minus"></i> ลดสต็อก</label>
                     </div>
                 </div>
@@ -703,7 +732,8 @@ $products = $conn->query($sql);
 
                 <div class="form-group" id="supplier_group" style="display:none;">
                     <label>รับจาก / ชื่อบริษัท / ร้านค้า</label>
-                    <input type="text" name="supplier" class="form-control" placeholder="ระบุแหล่งที่มา (เช่น บ.ขนส่ง A, ร้าน B)">
+                    <input type="text" name="supplier" class="form-control"
+                        placeholder="ระบุแหล่งที่มา (เช่น บ.ขนส่ง A, ร้าน B)">
                 </div>
 
                 <div class="form-group">
@@ -713,9 +743,11 @@ $products = $conn->query($sql);
                             (<span id="modal_input_unit">หน่วย</span>)
                         </span>
                     </label>
-                    <input type="number" id="amount_input" name="amount" class="form-control" placeholder="ระบุจำนวน" min="1" oninput="calculateNewQty()" required>
+                    <input type="number" id="amount_input" name="amount" class="form-control" placeholder="ระบุจำนวน"
+                        min="1" oninput="calculateNewQty()" required>
 
-                    <div id="preview-box" style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 8px; text-align: center; display: none;">
+                    <div id="preview-box"
+                        style="margin-top: 10px; padding: 10px; background: #f0f8ff; border-radius: 8px; text-align: center; display: none;">
                         <span style="color: #555; font-size: 14px;">ยอดคงเหลือหลังปรับ: </span>
                         <strong id="preview_qty" style="font-size: 20px; color: #356CB5;">0</strong>
                     </div>
@@ -729,42 +761,42 @@ $products = $conn->query($sql);
     <script>
         const reasons = {
             add: [{
-                    value: 'รับสินค้าเข้า',
-                    text: 'รับสินค้าเข้า'
-                },
-                {
-                    value: 'ตรวจนับเจอเกิน',
-                    text: 'ตรวจนับเจอเกิน'
-                },
-                {
-                    value: 'เพิ่ม-อื่นๆ',
-                    text: 'เพิ่ม-อื่นๆ'
-                }
+                value: 'รับสินค้าเข้า',
+                text: 'รับสินค้าเข้า'
+            },
+            {
+                value: 'ตรวจนับเจอเกิน',
+                text: 'ตรวจนับเจอเกิน'
+            },
+            {
+                value: 'เพิ่ม-อื่นๆ',
+                text: 'เพิ่ม-อื่นๆ'
+            }
             ],
             reduce: [{
-                    value: 'ขายหน้าร้าน',
-                    text: 'ขายหน้าร้าน'
-                },
-                {
-                    value: 'สินค้าชำรุด',
-                    text: 'สินค้าชำรุด/เสียหาย'
-                },
-                {
-                    value: 'สินค้าหมดอายุ',
-                    text: 'สินค้าหมดอายุ'
-                },
-                {
-                    value: 'เบิกใช้ภายใน',
-                    text: 'เบิกใช้ภายใน'
-                },
-                {
-                    value: 'สินค้าสูญหาย',
-                    text: 'สินค้าสูญหาย/นับขาด'
-                },
-                {
-                    value: 'ลด-อื่นๆ',
-                    text: 'ลด-อื่นๆ'
-                }
+                value: 'ขายหน้าร้าน',
+                text: 'ขายหน้าร้าน'
+            },
+            {
+                value: 'สินค้าชำรุด',
+                text: 'สินค้าชำรุด/เสียหาย'
+            },
+            {
+                value: 'สินค้าหมดอายุ',
+                text: 'สินค้าหมดอายุ'
+            },
+            {
+                value: 'เบิกใช้ภายใน',
+                text: 'เบิกใช้ภายใน'
+            },
+            {
+                value: 'สินค้าสูญหาย',
+                text: 'สินค้าสูญหาย/นับขาด'
+            },
+            {
+                value: 'ลด-อื่นๆ',
+                text: 'ลด-อื่นๆ'
+            }
             ]
         };
 
@@ -841,14 +873,14 @@ $products = $conn->query($sql);
         }
 
 
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             var modal = document.getElementById('stockModal');
             if (event.target == modal) {
                 modal.style.display = "none";
             }
         }
 
-        document.addEventListener("DOMContentLoaded", function() {
+        document.addEventListener("DOMContentLoaded", function () {
             updateReasonOptions();
         });
     </script>

@@ -16,7 +16,7 @@ if (!isset($_GET['id'])) {
 $id = intval($_GET['id']);
 
 // ตรวจสอบว่ายังมีสินค้าอยู่ในประเภทนี้หรือไม่
-$check_stmt = $conn->prepare("SELECT COUNT(*) FROM products WHERE category = ?");
+$check_stmt = $conn->prepare("SELECT COUNT(*) FROM products WHERE category = ? AND is_deleted = 0");
 $check_stmt->bind_param("i", $id);
 $check_stmt->execute();
 $check_stmt->bind_result($product_count);
@@ -34,7 +34,7 @@ if ($product_count > 0) {
     // ไม่มีสินค้าแล้ว ทำการลบประเภทสินค้า
     $stmt = $conn->prepare("DELETE FROM product_category WHERE id = ?");
     $stmt->bind_param("i", $id);
-    
+
     if ($stmt->execute()) {
         $_SESSION['swal'] = [
             'icon' => 'success',

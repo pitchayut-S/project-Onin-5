@@ -33,15 +33,19 @@ if ($result->num_rows == 0) {
 $product = $result->fetch_assoc();
 $image_file = $product['image'];
 
-// 2. ลบข้อมูลออกจากฐานข้อมูล
-$delete = $conn->prepare("DELETE FROM products WHERE id = ?");
-$delete->bind_param("i", $id);
+// 2. อัปเดตข้อมูลเป็น "ลบแล้ว" แทนการลบทิ้งจริง (Soft Delete)
+$username = $_SESSION['username'];
+$delete = $conn->prepare("UPDATE products SET is_deleted = 1, deleted_by = ?, deleted_at = NOW() WHERE id = ?");
+$delete->bind_param("si", $username, $id);
 
 if ($delete->execute()) {
-    // 3. ลบไฟล์รูปภาพออกจากโฟลเดอร์ uploads (ถ้ามี)
+    // 3. (ทางเลือก) ถ่ายรูปอาจเก็บไว้ก่อนยังไม่ต้องลบ หรือลบก็ได้ 
+    // ในที่นี้ขอ Comment การลบรูปทิ้งไว้ เผื่ออยากกู้คืนในอนาคตครับ
+    /*
     if (!empty($image_file) && file_exists("uploads/" . $image_file)) {
         unlink("uploads/" . $image_file);
     }
+    */
 
     // --- [จุดที่แก้ไข] ใช้ชื่อตัวแปรให้ตรงกับหน้า product_list.php ---
     $_SESSION['msg_success'] = "ลบข้อมูลสินค้าเรียบร้อยแล้ว";

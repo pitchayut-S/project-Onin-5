@@ -40,6 +40,7 @@ $sql_total_sales = "
     FROM stock_transactions t 
     JOIN products p ON t.product_id = p.id 
     WHERE t.type = 'reduce' 
+      AND p.is_deleted = 0
       AND t.reason = 'ขายหน้าร้าน'
       AND MONTH(t.created_at) = '$selected_month'
       AND YEAR(t.created_at) = '$selected_year'
@@ -58,6 +59,7 @@ $sql_popular = "
     JOIN products p ON t.product_id = p.id
     LEFT JOIN product_category c ON p.category = c.id
     WHERE t.type = 'reduce' 
+      AND p.is_deleted = 0
       AND t.reason = 'ขายหน้าร้าน'
       AND MONTH(t.created_at) = '$selected_month'
       AND YEAR(t.created_at) = '$selected_year'
@@ -104,6 +106,7 @@ $sql_chart = "
     FROM stock_transactions t
     JOIN products p ON t.product_id = p.id
     WHERE t.type = 'reduce' 
+      AND p.is_deleted = 0
       AND t.reason = 'ขายหน้าร้าน'
       AND YEAR(t.created_at) = '$selected_year'
     GROUP BY sale_month
@@ -220,11 +223,11 @@ $chart_values = array_column($monthly_sales_data, 'value');
         }
 
         .cards-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-    gap: 25px;
-    margin-bottom: 40px;
-}
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
 
         .product-card {
             background: white;
@@ -288,27 +291,27 @@ $chart_values = array_column($monthly_sales_data, 'value');
         }
 
         .card-code {
-    font-size: 12px;
-    color: #95a5a6;
-    margin-bottom: 5px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
+            font-size: 12px;
+            color: #95a5a6;
+            margin-bottom: 5px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         .card-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #333;
-    margin-bottom: -15px;
-    height: 50px;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: -15px;
+            height: 50px;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
 
         .card-price {
             color: #e67e22;
@@ -377,7 +380,7 @@ $chart_values = array_column($monthly_sales_data, 'value');
                     <?php
                     $current_y = date('Y');
                     for ($y = $current_y; $y >= $current_y - 2; $y--): // ย้อนหลังได้ 2 ปี 
-                    ?>
+                        ?>
                         <option value="<?= $y ?>" <?= ($selected_year == $y) ? 'selected' : '' ?>>
                             <?= $y + 543 ?>
                         </option>
@@ -388,7 +391,8 @@ $chart_values = array_column($monthly_sales_data, 'value');
 
             <div class="summary-box">
                 <div>
-                    <div class="summary-text">ยอดขายรวมประจำเดือน <b><?= $display_month_name ?> <?= $display_year_th ?></b></div>
+                    <div class="summary-text">ยอดขายรวมประจำเดือน <b><?= $display_month_name ?>
+                            <?= $display_year_th ?></b></div>
                     <div class="summary-value">฿ <?= number_format($total_sales_month, 2) ?></div>
                 </div>
                 <div>
@@ -414,14 +418,15 @@ $chart_values = array_column($monthly_sales_data, 'value');
                             $rankClass = "rank-3";
                             $icon = "3";
                         }
-                ?>
+                        ?>
                         <div class="product-card">
                             <div class="rank-badge <?= $rankClass ?>"><?= $icon ?></div>
 
                             <?php if ($row["image"]): ?>
                                 <img src="uploads/<?= $row["image"] ?>">
                             <?php else: ?>
-                                <div style="height:180px; background:#f9f9f9; display:flex; align-items:center; justify-content:center; border-radius:12px; margin-bottom:15px; border:1px solid #eee;">
+                                <div
+                                    style="height:180px; background:#f9f9f9; display:flex; align-items:center; justify-content:center; border-radius:12px; margin-bottom:15px; border:1px solid #eee;">
                                     <span style="color:#ccc;">ไม่มีรูป</span>
                                 </div>
                             <?php endif; ?>
@@ -437,12 +442,13 @@ $chart_values = array_column($monthly_sales_data, 'value');
                                 </div>
                             </div>
                         </div>
-                    <?php $rank++;
+                        <?php $rank++;
                     endwhile; ?>
                 <?php else: ?>
-                    <div style="grid-column: 1/-1; text-align:center; padding:50px; background:white; border-radius:16px; border:1px solid #eee; color:#888;">
+                    <div
+                        style="grid-column: 1/-1; text-align:center; padding:50px; background:white; border-radius:16px; border:1px solid #eee; color:#888;">
                         <i class="fa-solid fa-box-open" style="font-size:50px; margin-bottom:15px; color:#ddd;"></i><br>
-                        ยังไม่มีการขายสินค้ารายการใดเลยในเดือน <?= $display_month_name ?> <?= $display_year_th ?>
+                        ยังไม่มีการขายสินค้ารายการใดเลยในเดือน <?= $display_month_name ?>     <?= $display_year_th ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -495,7 +501,7 @@ $chart_values = array_column($monthly_sales_data, 'value');
                     },
                     tooltip: {
                         callbacks: {
-                            label: function(context) {
+                            label: function (context) {
                                 let label = context.dataset.label || '';
                                 if (label) {
                                     label += ': ';
@@ -533,7 +539,7 @@ $chart_values = array_column($monthly_sales_data, 'value');
                             font: {
                                 family: 'Prompt'
                             },
-                            callback: function(value) {
+                            callback: function (value) {
                                 return '฿' + new Intl.NumberFormat('th-TH').format(value);
                             }
                         }

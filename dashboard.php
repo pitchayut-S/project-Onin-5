@@ -13,7 +13,7 @@ if (!isset($_SESSION['username'])) {
 // PART 1: QUERY DATA
 // =========================================================
 // 1. ผลรวมสินค้า
-$sql_prod_count = "SELECT COUNT(*) as total_items FROM products";
+$sql_prod_count = "SELECT COUNT(*) as total_items FROM products WHERE is_deleted = 0";
 $total_products = $conn->query($sql_prod_count)->fetch_assoc()['total_items'];
 
 // 2. หมวดหมู่สินค้า (เปลี่ยนจากนับจำนวนชิ้นรวม เป็นนับหมวดหมู่)
@@ -36,7 +36,7 @@ $thai_months_full = [
     11 => 'พฤศจิกายน',
     12 => 'ธันวาคม'
 ];
-$current_month_name = $thai_months_full[(int)date('m')]; // ได้ชื่อเดือน เช่น กุมภาพันธ์
+$current_month_name = $thai_months_full[(int) date('m')]; // ได้ชื่อเดือน เช่น กุมภาพันธ์
 $current_year_th = date('Y') + 543; // แปลง ค.ศ. เป็น พ.ศ.
 
 // ยอดขายเดือนนี้
@@ -59,13 +59,14 @@ $sql_sales_today = "SELECT SUM(t.amount * p.selling_price) as today_total
 $total_sales_today = $conn->query($sql_sales_today)->fetch_assoc()['today_total'] ?? 0;
 
 // 4. สินค้าใกล้หมด
-$sql_low = "SELECT COUNT(*) as low_count FROM products WHERE quantity <= 10";
+$sql_low = "SELECT COUNT(*) as low_count FROM products WHERE quantity <= 10 AND is_deleted = 0";
 $low_stock_count = $conn->query($sql_low)->fetch_assoc()['low_count'];
 
 // 5. กราฟ (เปลี่ยนเป็นผลรวมจำนวนชิ้น SUM(quantity) แยกตามหมวดหมู่)
 $sql_cat_chart = "SELECT c.category_name, SUM(p.quantity) as stock_qty 
                   FROM products p 
                   LEFT JOIN product_category c ON p.category = c.id 
+                  WHERE p.is_deleted = 0 
                   GROUP BY p.category";
 $res_cat = $conn->query($sql_cat_chart);
 $cat_labels = [];
@@ -80,7 +81,7 @@ $sql_recent = "SELECT t.*, p.product_code, p.name FROM stock_transactions t JOIN
 $res_recent = $conn->query($sql_recent);
 
 // 7. ใกล้หมดอายุ
-$sql_exp = "SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left FROM products WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) ORDER BY exp_date ASC LIMIT 5";
+$sql_exp = "SELECT name, exp_date, DATEDIFF(exp_date, CURDATE()) as days_left FROM products WHERE exp_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 30 DAY) AND is_deleted = 0 ORDER BY exp_date ASC LIMIT 5";
 $res_exp = $conn->query($sql_exp);
 ?>
 
@@ -260,6 +261,7 @@ $res_exp = $conn->query($sql_exp);
         .card-red .stat-icon {
             color: #dc2626;
         }
+
         /* สีตัวอักษรใน card */
         /* โทนสีของแต่ละ Card */
         .card-blue .stat-value {
@@ -441,7 +443,8 @@ $res_exp = $conn->query($sql_exp);
                     <i class="fa-solid fa-box-open stat-icon"></i>
                     <div class="stat-body">
                         <div class="stat-title">ผลรวมสินค้า</div>
-                        <div class="stat-val">จำนวน <?= number_format($total_products) ?> <span class="stat-unit">รายการ</span></div>
+                        <div class="stat-val">จำนวน <?= number_format($total_products) ?> <span
+                                class="stat-unit">รายการ</span></div>
                         <div class="stat-desc">สินค้าทั้งหมดในระบบ</div>
                     </div>
                     <a href="product_list.php" class="stat-footer">
@@ -453,7 +456,8 @@ $res_exp = $conn->query($sql_exp);
                     <i class="fa-solid fa-layer-group stat-icon"></i>
                     <div class="stat-body">
                         <div class="stat-title">หมวดหมู่สินค้า</div>
-                        <div class="stat-val"><?= number_format($total_categories) ?> <span class="stat-unit">หมวดหมู่</span></div>
+                        <div class="stat-val"><?= number_format($total_categories) ?> <span
+                                class="stat-unit">หมวดหมู่</span></div>
                         <div class="stat-desc">จัดกลุ่มสินค้าทั้งหมด</div>
                     </div>
                     <a href="category_list.php" class="stat-footer">
@@ -467,7 +471,8 @@ $res_exp = $conn->query($sql_exp);
                         <div class="stat-title">ยอดขาย <?= $current_month_name ?> <?= $current_year_th ?></div>
                         <div class="stat-val">฿<?= number_format($total_sales_month, 2) ?></div>
                         <div class="stat-desc">
-                            <span style="color: #059669; font-weight: 600;"><i class="fa-solid fa-calendar-day"></i> วันนี้:</span> ฿<?= number_format($total_sales_today, 2) ?>
+                            <span style="color: #059669; font-weight: 600;"><i class="fa-solid fa-calendar-day"></i>
+                                วันนี้:</span> ฿<?= number_format($total_sales_today, 2) ?>
                         </div>
                     </div>
                     <a href="ProductPoppular.php" class="stat-footer">
@@ -479,7 +484,8 @@ $res_exp = $conn->query($sql_exp);
                     <i class="fa-solid fa-triangle-exclamation stat-icon"></i>
                     <div class="stat-body">
                         <div class="stat-title">สินค้าใกล้หมด / ค้างสต็อก</div>
-                        <div class="stat-val"><?= number_format($low_stock_count) ?> <span class="stat-unit">รายการ</span></div>
+                        <div class="stat-val"><?= number_format($low_stock_count) ?> <span
+                                class="stat-unit">รายการ</span></div>
                         <div class="stat-desc">รายการที่เหลือน้อยกว่า 10</div>
                     </div>
                     <a href="product_Stock.php?filter=lowstock" class="stat-footer">
@@ -494,7 +500,8 @@ $res_exp = $conn->query($sql_exp);
                 <div class="dash-box">
                     <div class="box-header">
                         <div class="box-title"><i class="fa-solid fa-clock-rotate-left"></i> ความเคลื่อนไหวล่าสุด</div>
-                        <a href="ReportStock.php" style="font-size:16px; color:#2563eb; text-decoration:none; font-weight:700;">ดูทั้งหมด</a>
+                        <a href="ReportStock.php"
+                            style="font-size:16px; color:#2563eb; text-decoration:none; font-weight:700;">ดูทั้งหมด</a>
                     </div>
 
                     <table class="simple-table">
@@ -510,14 +517,15 @@ $res_exp = $conn->query($sql_exp);
                             <?php if ($res_recent->num_rows > 0): ?>
                                 <?php while ($row = $res_recent->fetch_assoc()):
                                     $isAdd = ($row['type'] == 'add');
-                                ?>
+                                    ?>
                                     <tr>
                                         <td style="color:#6b7280; font-size:13px;">
                                             <?= date("d/m/Y H:i", strtotime($row['created_at'])) ?>
                                         </td>
                                         <td>
                                             <div style="font-weight:600; color:#1f2937;"><?= $row['name'] ?></div>
-                                            <div style="font-size:12px; color:#9ca3af;"><i class="fa-solid fa-user"></i> <?= htmlspecialchars($row['username']) ?></div>
+                                            <div style="font-size:12px; color:#9ca3af;"><i class="fa-solid fa-user"></i>
+                                                <?= htmlspecialchars($row['username']) ?></div>
                                         </td>
                                         <td>
                                             <?php if ($isAdd): ?>
@@ -541,7 +549,8 @@ $res_exp = $conn->query($sql_exp);
                 <div style="display:flex; flex-direction:column; gap:25px;">
                     <div class="dash-box">
                         <div class="box-header">
-                            <div class="box-title"><i class="fa-solid fa-chart-pie" style="color:#d97706;"></i>สต็อกคงเหลือ (แยกตามหมวดหมู่)</div>
+                            <div class="box-title"><i class="fa-solid fa-chart-pie"
+                                    style="color:#d97706;"></i>สต็อกคงเหลือ (แยกตามหมวดหมู่)</div>
                         </div>
                         <div style="height:200px; width:100%; display:flex; justify-content:center;">
                             <canvas id="catChart"></canvas>
@@ -550,7 +559,8 @@ $res_exp = $conn->query($sql_exp);
 
                     <div class="dash-box">
                         <div class="box-header">
-                            <div class="box-title" style="color:#dc2626;"><i class="fa-solid fa-calendar-xmark"></i> ใกล้หมดอายุ (30 วัน)</div>
+                            <div class="box-title" style="color:#dc2626;"><i class="fa-solid fa-calendar-xmark"></i>
+                                ใกล้หมดอายุ (30 วัน)</div>
                         </div>
                         <?php if ($res_exp->num_rows > 0): ?>
                             <?php while ($e = $res_exp->fetch_assoc()): ?>

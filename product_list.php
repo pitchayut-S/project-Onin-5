@@ -21,24 +21,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // --- กรณี: เพิ่มสินค้าใหม่ (ADD) ---
     if (isset($_POST['action']) && $_POST['action'] === 'add') {
-        $product_code  = $_POST['product_code'];
-        $name          = trim($_POST['name']);
-        $category      = $_POST['category'];
-        $unit          = $_POST['unit'];
-        $cost          = $_POST['cost'];
+        $product_code = $_POST['product_code'];
+        $name = trim($_POST['name']);
+        $category = $_POST['category'];
+        $unit = $_POST['unit'];
+        $cost = $_POST['cost'];
         $selling_price = $_POST['selling_price'];
         $format_date = function ($d) {
-            if (!is_string($d)) return null;
+            if (!is_string($d))
+                return null;
             $d = trim($d);
-            if (empty($d)) return null;
-            if (preg_match('/^\d{4}$/', $d)) return $d . '-01-01';
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+            if (empty($d))
+                return null;
+            if (preg_match('/^\d{4}$/', $d))
+                return $d . '-01-01';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d))
+                return $d;
             $parsed = strtotime($d);
             return $parsed ? date('Y-m-d', $parsed) : null;
         };
-        $mfg_date      = isset($_POST['mfg_date']) ? $format_date($_POST['mfg_date']) : null;
-        $exp_date      = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
-        $quantity      = intval($_POST['quantity']);
+        $mfg_date = isset($_POST['mfg_date']) ? $format_date($_POST['mfg_date']) : null;
+        $exp_date = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
+        $quantity = intval($_POST['quantity']);
 
         // ตรวจสอบราคาทุนและราคาขาย ห้ามติดลบ
         if ($cost < 0 || $selling_price < 0) {
@@ -55,7 +59,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // ตรวจสอบว่าชื่อสินค้าซ้ำหรือไม่
-        $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ?");
+        $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND is_deleted = 0");
         $check_stmt->bind_param("s", $name);
         $check_stmt->execute();
         if ($check_stmt->get_result()->num_rows > 0) {
@@ -104,25 +108,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     // --- กรณี: แก้ไขสินค้า (EDIT) ---
     if (isset($_POST['action']) && $_POST['action'] === 'edit') {
-        $id            = intval($_POST['id']);
-        $product_code  = $_POST['product_code'];
-        $name          = trim($_POST['name']);
-        $category      = $_POST['category'];
-        $unit          = $_POST['unit'];
-        $cost          = floatval($_POST['cost']);
+        $id = intval($_POST['id']);
+        $product_code = $_POST['product_code'];
+        $name = trim($_POST['name']);
+        $category = $_POST['category'];
+        $unit = $_POST['unit'];
+        $cost = floatval($_POST['cost']);
         $format_date = function ($d) {
-            if (!is_string($d)) return null;
+            if (!is_string($d))
+                return null;
             $d = trim($d);
-            if (empty($d)) return null;
-            if (preg_match('/^\d{4}$/', $d)) return $d . '-01-01';
-            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d)) return $d;
+            if (empty($d))
+                return null;
+            if (preg_match('/^\d{4}$/', $d))
+                return $d . '-01-01';
+            if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $d))
+                return $d;
             $parsed = strtotime($d);
             return $parsed ? date('Y-m-d', $parsed) : null;
         };
-        $exp_date      = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
+        $exp_date = isset($_POST['exp_date']) ? $format_date($_POST['exp_date']) : null;
         $selling_price = floatval($_POST['selling_price']);
-        $old_image     = $_POST['old_image'];
-        $image_name    = $old_image;
+        $old_image = $_POST['old_image'];
+        $image_name = $old_image;
 
         // เตรียม URL สำหรับกลับไปหน้าเดิม
         $redirect_url = "product_list.php";
@@ -148,7 +156,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         // ตรวจสอบว่าชื่อสินค้าซ้ำกับรายการอื่นหรือไม่
-        $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND id != ?");
+        $check_stmt = $conn->prepare("SELECT id FROM products WHERE name = ? AND id != ? AND is_deleted = 0");
         $check_stmt->bind_param("si", $name, $id);
         $check_stmt->execute();
         if ($check_stmt->get_result()->num_rows > 0) {
@@ -257,14 +265,15 @@ foreach ($categories as $cat) {
 // ------------------------------------------------------------------
 
 $limit = 20;
-$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
-if ($page < 1) $page = 1;
+$page = isset($_GET['page']) ? (int) $_GET['page'] : 1;
+if ($page < 1)
+    $page = 1;
 $start = ($page - 1) * $limit;
 
 $search_text = isset($_GET['search']) ? trim($_GET['search']) : "";
 $search_category = isset($_GET['search_category']) ? $_GET['search_category'] : "";
 
-$condition_sql = " WHERE 1=1 ";
+$condition_sql = " WHERE p.is_deleted = 0 ";
 if ($search_text !== "") {
     $like = "%" . $conn->real_escape_string($search_text) . "%";
     $condition_sql .= " AND (p.product_code LIKE '$like' OR p.name LIKE '$like' OR c.category_name LIKE '$like')";
@@ -382,7 +391,7 @@ $products = $conn->query($sql);
 
         th,
         td {
-            padding: 10px 5px!important;
+            padding: 10px 5px !important;
             border-bottom: 1px solid #eee;
         }
 
@@ -635,13 +644,15 @@ $products = $conn->query($sql);
             <?php endif; ?>
 
             <div style="text-align:right; margin-bottom:20px;">
-                <button onclick="openAddModal()" style="background:#28a745;color:white;padding:10px 18px;border-radius:10px;border:none;font-weight:600;cursor:pointer;font-family:'Prompt';">
+                <button onclick="openAddModal()"
+                    style="background:#28a745;color:white;padding:10px 18px;border-radius:10px;border:none;font-weight:600;cursor:pointer;font-family:'Prompt';">
                     <i class="fa-solid fa-plus"></i> เพิ่มสินค้า
                 </button>
             </div>
 
             <form class="search-box" method="get" action="product_list.php">
-                <input type="text" name="search" placeholder="ค้นหา (รหัส / ชื่อสินค้า)" value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
+                <input type="text" name="search" placeholder="ค้นหา (รหัส / ชื่อสินค้า)"
+                    value="<?= htmlspecialchars($search_text, ENT_QUOTES) ?>">
 
                 <select name="search_category" class="search-select">
                     <option value="">-- ทุกหมวดหมู่ --</option>
@@ -683,7 +694,7 @@ $products = $conn->query($sql);
                             while ($row = $products->fetch_assoc()):
                                 $stock_class = $row['quantity'] > 0 ? "stock-ok" : "stock-low";
                                 $stock_label = $row['quantity'] > 0 ? "มีสต็อก" : "หมด";
-                            ?>
+                                ?>
                                 <tr>
                                     <td style="text-align:center;"><?= $i++ ?></td>
                                     <td><?= $row['product_code'] ?></td>
@@ -706,10 +717,12 @@ $products = $conn->query($sql);
                                         </div>
                                     </td>
                                     <td><?= $row['unit'] ?></td>
-                                    <td><span class="badge <?= $stock_class ?>"><?= $row['quantity'] ?> | <?= $stock_label ?></span></td>
+                                    <td><span class="badge <?= $stock_class ?>"><?= $row['quantity'] ?> |
+                                            <?= $stock_label ?></span></td>
                                     <td><?= number_format($row['cost'], 2) ?> บาท</td>
                                     <td><?= number_format($row['selling_price'], 2) ?> บาท</td>
-                                    <td><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?></td>
+                                    <td><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?>
+                                    </td>
                                     <td>
                                         <button class="btn-edit" onclick='openEditModal(<?php echo json_encode($row); ?>)'>
                                             <i class="fa-solid fa-pen"></i>
@@ -730,16 +743,20 @@ $products = $conn->query($sql);
             </div>
 
             <?php if ($total_pages > 1): ?>
-                <div class="pagination-container" style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
+                <div class="pagination-container"
+                    style="display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px;">
                     <div class="text-muted" style="font-size: 14px;">
-                        แสดง <?= $products->num_rows ?> รายการ (จากทั้งหมด <?= number_format($total_records) ?>) - หน้า <?= $page ?> / <?= $total_pages ?>
+                        แสดง <?= $products->num_rows ?> รายการ (จากทั้งหมด <?= number_format($total_records) ?>) - หน้า
+                        <?= $page ?> / <?= $total_pages ?>
                     </div>
                     <div class="pagination" style="display: flex; justify-content: center; gap: 5px;">
                         <?php if ($page > 1): ?>
-                            <a href="?page=1&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>" title="หน้าแรก">
+                            <a href="?page=1&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>"
+                                title="หน้าแรก">
                                 <i class="fa-solid fa-angles-left"></i> หน้าแรก
                             </a>
-                            <a href="?page=<?= $page - 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>" title="ย้อนกลับ">
+                            <a href="?page=<?= $page - 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>"
+                                title="ย้อนกลับ">
                                 <i class="fa-solid fa-angle-left"></i>
                             </a>
                         <?php endif; ?>
@@ -748,21 +765,23 @@ $products = $conn->query($sql);
                         $range = 2;
                         for ($p = 1; $p <= $total_pages; $p++):
                             if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
-                        ?>
+                                ?>
                                 <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>"
                                     class="<?= $page == $p ? 'active' : '' ?>">
                                     <?= $p ?>
                                 </a>
                             <?php elseif (($p == $page - $range - 1) || ($p == $page + $range + 1)): ?>
                                 <span style="padding:8px; color:#999;">...</span>
-                        <?php endif;
+                            <?php endif;
                         endfor; ?>
 
                         <?php if ($page < $total_pages): ?>
-                            <a href="?page=<?= $page + 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>" title="ถัดไป">
+                            <a href="?page=<?= $page + 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>"
+                                title="ถัดไป">
                                 <i class="fa-solid fa-angle-right"></i>
                             </a>
-                            <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>" title="หน้าสุดท้าย">
+                            <a href="?page=<?= $total_pages ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>"
+                                title="หน้าสุดท้าย">
                                 หน้าสุดท้าย <i class="fa-solid fa-angles-right"></i>
                             </a>
                         <?php endif; ?>
@@ -783,7 +802,8 @@ $products = $conn->query($sql);
                 <div class="form-grid">
                     <div class="form-group">
                         <label>ประเภทสินค้า <span style="color:red;">*</span></label>
-                        <select name="category" id="add_category" class="form-control" onchange="genProductCode()" required>
+                        <select name="category" id="add_category" class="form-control" onchange="genProductCode()"
+                            required>
                             <option value="">-- เลือกประเภท --</option>
                             <?php foreach ($categories as $cat): ?>
                                 <option value="<?= $cat['id'] ?>"><?= $cat['category_name'] ?></option>
@@ -792,7 +812,9 @@ $products = $conn->query($sql);
                     </div>
                     <div class="form-group">
                         <label>รหัสสินค้า <span style="color:red;">*</span></label>
-                        <input type="text" name="product_code" id="add_product_code" class="form-control" placeholder="ระบบจะสร้างให้อัตโนมัติ..." readonly style="background-color: #eee; cursor: not-allowed; color:#555;" required>
+                        <input type="text" name="product_code" id="add_product_code" class="form-control"
+                            placeholder="ระบบจะสร้างให้อัตโนมัติ..." readonly
+                            style="background-color: #eee; cursor: not-allowed; color:#555;" required>
                     </div>
                     <div class="form-group">
                         <label>ชื่อสินค้า <span style="color:red;">*</span></label>
@@ -855,7 +877,8 @@ $products = $conn->query($sql);
                 <div class="form-grid">
                     <div class="form-group">
                         <label>รหัสสินค้า</label>
-                        <input type="text" id="edit_product_code" name="product_code" readonly style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" required>
+                        <input type="text" id="edit_product_code" name="product_code" readonly
+                            style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" required>
                         <small style="color:red; font-size:12px;">* รหัสสินค้าไม่สามารถแก้ไขได้</small>
                     </div>
                     <div class="form-group">
@@ -886,12 +909,15 @@ $products = $conn->query($sql);
                     </div>
                     <div class="form-group">
                         <label>ราคาขาย</label>
-                        <input type="number" step="0.01" id="edit_selling_price" name="selling_price" class="form-control">
+                        <input type="number" step="0.01" id="edit_selling_price" name="selling_price"
+                            class="form-control">
                     </div>
                     <div class="form-group">
                         <label>จำนวนคงเหลือ</label>
-                        <input type="number" id="edit_quantity" name="quantity" class="form-control" readonly style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" required>
-                        <small style="color:red; font-size:12px;">* ปรับจำนวนสต็อกได้ที่เมนู "สต็อกสินค้า" เท่านั้น</small>
+                        <input type="number" id="edit_quantity" name="quantity" class="form-control" readonly
+                            style="background-color: #e9ecef; cursor: not-allowed; color: #6c757d;" required>
+                        <small style="color:red; font-size:12px;">* ปรับจำนวนสต็อกได้ที่เมนู "สต็อกสินค้า"
+                            เท่านั้น</small>
                     </div>
                     <div class="form-group">
                         <label>วันหมดอายุ</label>
@@ -953,7 +979,7 @@ $products = $conn->query($sql);
             document.getElementById(modalId).style.display = "none";
         }
 
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (event.target.classList.contains('modal')) {
                 event.target.style.display = "none";
             }
