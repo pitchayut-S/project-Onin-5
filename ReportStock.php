@@ -599,7 +599,7 @@ $result = $conn->query($sql);
             const dateStr = dateObj.toLocaleDateString('th-TH', {
                 year: 'numeric',
                 month: 'long',
-                day: 'numeric',
+                day: '2-digit',
                 hour: '2-digit',
                 minute: '2-digit'
             });

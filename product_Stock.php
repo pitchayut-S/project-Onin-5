@@ -575,8 +575,8 @@ $products = $conn->query($sql);
                     <thead>
                         <tr>
                             <th style="width: 50px;">ลำดับ</th>
-                            <th>รูป</th>
                             <th>รหัสสินค้า</th>
+                            <th>รูปภาพ</th>
                             <th>ชื่อสินค้า</th>
                             <th>ประเภท</th>
                             <th>คงเหลือ</th>
@@ -603,8 +603,8 @@ $products = $conn->query($sql);
                         ?>
                                 <tr>
                                     <td><?= $i++ ?></td>
-                                    <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
                                     <td><?= $row['product_code'] ?></td>
+                                    <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>" class="product-img"><?php else: ?><span style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
                                     <td>
                                         <?= $row['name'] ?>
                                         <?php if ($expired): ?>
@@ -617,7 +617,7 @@ $products = $conn->query($sql);
                                             <?= number_format($row['quantity']) ?> <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
                                         </span>
                                     </td>
-                                    <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= $row['exp_date'] ?></td>
+                                    <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>"><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?></td>
                                     <td>
                                         <button type="button" onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')" class="btn-adjust">
                                             <i class="fa-solid fa-pen-to-square"></i> ปรับสต๊อก

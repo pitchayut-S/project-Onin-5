@@ -513,7 +513,7 @@ $res_exp = $conn->query($sql_exp);
                                 ?>
                                     <tr>
                                         <td style="color:#6b7280; font-size:13px;">
-                                            <?= date("d/m H:i", strtotime($row['created_at'])) ?>
+                                            <?= date("d/m/Y H:i", strtotime($row['created_at'])) ?>
                                         </td>
                                         <td>
                                             <div style="font-weight:600; color:#1f2937;"><?= $row['name'] ?></div>

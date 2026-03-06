@@ -729,7 +729,7 @@ $products = $conn->query($sql);
                                     <td><span class="badge <?= $stock_class ?>"><?= $row['quantity'] ?> | <?= $stock_label ?></span></td>
                                     <td><?= number_format($row['cost'], 2) ?> บาท</td>
                                     <td><?= number_format($row['selling_price'], 2) ?> บาท</td>
-                                    <td><?= $row['exp_date'] ?></td>
+                                    <td><?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?></td>
                                     <td>
                                         <button class="btn-edit" onclick='openEditModal(<?php echo json_encode($row); ?>)'>
                                             <i class="fa-solid fa-pen"></i>
