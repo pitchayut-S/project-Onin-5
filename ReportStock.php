@@ -214,6 +214,10 @@ $result = $conn->query($sql);
             font-weight: 600;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
+            /* จัดให้อยู่ตรงกลาง */
+            width: 85px;
+            /* กำหนดความกว้างให้เท่ากันทุกปุ่ม */
             gap: 5px;
         }
 
@@ -224,6 +228,12 @@ $result = $conn->query($sql);
         }
 
         .type-reduce {
+            background: #fdf2e9;
+            color: #d35400;
+            border: 1px solid #f5b041;
+        }
+
+        .type-delete {
             background: #fdedec;
             color: #c0392b;
             border: 1px solid #f5b7b1;
@@ -402,8 +412,7 @@ $result = $conn->query($sql);
 
             <form class="search-box" method="get">
                 <input type="text" name="search" class="search-input-main"
-                    placeholder="ค้นหาชื่อสินค้า, รหัส, User หรือ เหตุผล..."
-                    value="<?= htmlspecialchars($search) ?>">
+                    placeholder="ค้นหาชื่อสินค้า, รหัส, User หรือ เหตุผล..." value="<?= htmlspecialchars($search) ?>">
 
                 <select name="type" class="search-select">
                     <option value="all" <?= $type_filter == 'all' ? 'selected' : '' ?>>ทั้งหมด</option>
@@ -438,6 +447,7 @@ $result = $conn->query($sql);
                         <?php if ($result->num_rows > 0): ?>
                             <?php while ($row = $result->fetch_assoc()):
                                 $isAdd = ($row['type'] == 'add');
+                                $isDelete = ($row['reason'] == 'ลบสินค้าออกจากระบบ');
                                 $timestamp = strtotime($row['created_at']);
                                 $date = date("d/m/Y", $timestamp);
                                 $time = date("H:i", $timestamp);
@@ -449,7 +459,7 @@ $result = $conn->query($sql);
 
                                 // Prepare JSON data for Modal
                                 $jsonData = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
-                            ?>
+                                ?>
                                 <tr onclick="showDetail(<?= $jsonData ?>)">
                                     <td>
                                         <div class="date-text"><?= $date ?></div>
@@ -466,10 +476,15 @@ $result = $conn->query($sql);
                                             <?php if ($row['image']): ?>
                                                 <img src="uploads/<?= $row['image'] ?>" class="p-img">
                                             <?php else: ?>
-                                                <div class="p-img" style="background:#eee; display:flex; align-items:center; justify-content:center; color:#ccc;"><i class="fa-solid fa-box"></i></div>
+                                                <div class="p-img"
+                                                    style="background:#eee; display:flex; align-items:center; justify-content:center; color:#ccc;">
+                                                    <i class="fa-solid fa-box"></i>
+                                                </div>
                                             <?php endif; ?>
                                             <div>
-                                                <div class="p-name"><?= $row['product_name'] ?? '<span style="color:red;">(สินค้าถูกลบ)</span>' ?></div>
+                                                <div class="p-name">
+                                                    <?= $row['product_name'] ?? '<span style="color:red;">(สินค้าถูกลบ)</span>' ?>
+                                                </div>
                                                 <div class="p-code"><?= $row['product_code'] ?? '-' ?></div>
                                             </div>
                                         </div>
@@ -477,6 +492,9 @@ $result = $conn->query($sql);
                                     <td>
                                         <?php if ($isAdd): ?>
                                             <span class="badge-type type-add"><i class="fa-solid fa-arrow-up"></i> เพิ่ม</span>
+                                        <?php elseif ($isDelete): ?>
+                                            <span class="badge-type type-delete"><i class="fa-solid fa-trash-can"></i>
+                                                ลบสินค้า</span>
                                         <?php else: ?>
                                             <span class="badge-type type-reduce"><i class="fa-solid fa-arrow-down"></i> ลด</span>
                                         <?php endif; ?>
@@ -494,7 +512,8 @@ $result = $conn->query($sql);
                         <?php else: ?>
                             <tr>
                                 <td colspan="6" style="text-align:center; padding:40px; color:#999;">
-                                    <i class="fa-regular fa-folder-open" style="font-size:30px; margin-bottom:10px;"></i><br>
+                                    <i class="fa-regular fa-folder-open"
+                                        style="font-size:30px; margin-bottom:10px;"></i><br>
                                     ไม่พบข้อมูลตามเงื่อนไขที่ค้นหา
                                 </td>
                             </tr>
@@ -514,9 +533,11 @@ $result = $conn->query($sql);
             </div>
             <div class="modal-body">
 
-                <div style="display:flex; gap:20px; align-items:center; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid #eee;">
+                <div
+                    style="display:flex; gap:20px; align-items:center; margin-bottom:25px; padding-bottom:20px; border-bottom:1px solid #eee;">
                     <img id="d_image" src="" class="big-img" onerror="this.style.display='none'">
-                    <div id="d_no_image" class="big-img" style="display:none; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:30px;">
+                    <div id="d_no_image" class="big-img"
+                        style="display:none; align-items:center; justify-content:center; background:#eee; color:#aaa; font-size:30px;">
                         <i class="fa-solid fa-box"></i>
                     </div>
                     <div>
@@ -531,7 +552,8 @@ $result = $conn->query($sql);
                 <div class="detail-grid">
                     <div class="detail-item">
                         <div class="detail-label">ผู้ทำรายการ (User)</div>
-                        <div class="detail-value"><i class="fa-solid fa-user-circle"></i> <span id="d_user"></span></div>
+                        <div class="detail-value"><i class="fa-solid fa-user-circle"></i> <span id="d_user"></span>
+                        </div>
                     </div>
                     <div class="detail-item">
                         <div class="detail-label">วันเวลาที่ทำรายการ</div>
@@ -545,7 +567,8 @@ $result = $conn->query($sql);
                     </div>
                     <div class="detail-item" id="d_supplier_box" style="grid-column: span 2; display:none;">
                         <div class="detail-label">รับจาก / แหล่งที่มา</div>
-                        <div class="detail-value"><i class="fa-solid fa-truck-field"></i> <span id="d_supplier"></span></div>
+                        <div class="detail-value"><i class="fa-solid fa-truck-field"></i> <span id="d_supplier"></span>
+                        </div>
                     </div>
                 </div>
 
@@ -633,9 +656,15 @@ $result = $conn->query($sql);
             } else {
                 // สูตร: คงเหลือ + ยอดลด = ยอดก่อนหน้า
                 prevBalance = balance + amount;
-                changeLabel.innerText = "จ่ายออก (-)";
-                changeVal.innerText = "-" + amount;
-                changeVal.style.color = "#c0392b";
+                if (data.reason === 'ลบสินค้าออกจากระบบ') {
+                    changeLabel.innerText = "ถูกลบออก (-)";
+                    changeVal.innerText = "-" + amount;
+                    changeVal.style.color = "#c0392b"; // แดงเข้ม
+                } else {
+                    changeLabel.innerText = "จ่ายออก (-)";
+                    changeVal.innerText = "-" + amount;
+                    changeVal.style.color = "#d35400"; // ส้ม-แดง (สำหรับลดสต็อกปกติ)
+                }
                 arrowIcon.className = "fa-solid fa-arrow-right";
             }
 
@@ -651,7 +680,7 @@ $result = $conn->query($sql);
         }
 
         // Close when click outside
-        window.onclick = function(event) {
+        window.onclick = function (event) {
             if (event.target == document.getElementById('detailModal')) {
                 closeDetail();
             }

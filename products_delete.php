@@ -18,8 +18,8 @@ if (!isset($_GET['id'])) {
 
 $id = intval($_GET['id']);
 
-// 1. ดึงข้อมูลสินค้าเพื่อเอารูปภาพมาลบ
-$stmt = $conn->prepare("SELECT image FROM products WHERE id = ?");
+// 1. ดึงข้อมูลสินค้าเพื่อเอารูปภาพมาลบ และดึงข้อมูลเพื่อบันทึกประวัติ
+$stmt = $conn->prepare("SELECT name, quantity, image FROM products WHERE id = ?");
 $stmt->bind_param("i", $id);
 $stmt->execute();
 $result = $stmt->get_result();
@@ -46,6 +46,12 @@ if ($delete->execute()) {
         unlink("uploads/" . $image_file);
     }
     */
+
+    // 4. บันทึกประวัติการลบลงในตารางประวัติสต็อก (เพื่อให้แสดงใน ReportStock.php)
+    $stmt_tr = $conn->prepare("INSERT INTO stock_transactions (product_id, type, amount, balance, username, reason, created_at) VALUES (?, 'reduce', ?, 0, ?, 'ลบสินค้าออกจากระบบ', NOW())");
+    $qty = $product['quantity'];
+    $stmt_tr->bind_param("iis", $id, $qty, $username);
+    $stmt_tr->execute();
 
     // --- [จุดที่แก้ไข] ใช้ชื่อตัวแปรให้ตรงกับหน้า product_list.php ---
     $_SESSION['msg_success'] = "ลบข้อมูลสินค้าเรียบร้อยแล้ว";
