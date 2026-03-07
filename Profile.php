@@ -217,13 +217,23 @@ $query_users = $conn->query($sql);
             cursor: pointer;
         }
 
+        .table-scroll-container {
+            width: 100%;
+            max-height: 65vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+            position: relative;
+            margin-bottom: 20px;
+        }
+
         table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             background: white;
-            border-radius: 14px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             border-radius: 14px;
             overflow: hidden;
         }
@@ -233,6 +243,9 @@ $query_users = $conn->query($sql);
             padding: 14px 12px;
             border-bottom: 1px solid #eee;
             text-align: left;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         th {
@@ -403,7 +416,8 @@ $query_users = $conn->query($sql);
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                 <div class="page-title">จัดการผู้ใช้งาน (Profile)</div>
                 <?php if ($_SESSION['role'] === 'admin'): ?>
-                    <button onclick="openUserModal()" class="btn-add-new"><i class="fa-solid fa-user-plus"></i> เพิ่มผู้ใช้ใหม่</button>
+                    <button onclick="openUserModal()" class="btn-add-new"><i class="fa-solid fa-user-plus"></i>
+                        เพิ่มผู้ใช้ใหม่</button>
                 <?php endif; ?>
             </div>
 
@@ -416,61 +430,68 @@ $query_users = $conn->query($sql);
                 unset($_SESSION['msg_error']);
             } ?>
 
-            <?php if ($_SESSION['role'] === 'admin'): ?> <form class="search-box" method="get">
+            <?php if ($_SESSION['role'] === 'admin'): ?>
+                <form class="search-box" method="get">
                     <input type="text" name="search" placeholder="ค้นหา..." value="<?= htmlspecialchars($search_text) ?>">
                     <button type="submit" class="btn-search">ค้นหา</button>
                 </form>
             <?php endif; ?>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Username</th>
-                        <th>ชื่อ-นามสกุล</th>
-                        <th>Email</th>
-                        <th>เบอร์โทรศัพท์</th>
-                        <th>ตำแหน่ง</th>
-                        <th>สถานะ</th>
-                        <th>จัดการ</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php while ($u = $query_users->fetch_assoc()): ?>
+            <div class="table-scroll-container">
+                <table>
+                    <thead>
                         <tr>
-                            <td style="font-weight:600"><?= htmlspecialchars($u['username']) ?></td>
-                            <td><?= htmlspecialchars($u['fullname']) ?></td>
-                            <td><?= isset($u['email']) ? htmlspecialchars($u['email']) : '-' ?></td>
-                            <td><?= isset($u['phone']) ? htmlspecialchars($u['phone']) : '-' ?></td>
-                            <td>
-                                <?php
-                                $role_display = ($u['role'] == 'admin') ? 'เจ้าของร้าน (Admin)' : 'พนักงาน (Staff)';
-                                $role_class = ($u['role'] == 'admin') ? 'role-admin' : 'role-staff';
-                                ?>
-                                <span class="badge <?= $role_class ?>"><?= $role_display ?></span>
-                            </td>
-                            <td>
-                                <?php
-                                $st = isset($u['status']) ? $u['status'] : 'active';
-                                $st_display = ($st == 'active') ? 'เปิดใช้งาน' : 'ระงับ';
-                                $st_class = ($st == 'active') ? 'status-active' : 'status-inactive';
-                                ?>
-                                <span class="badge <?= $st_class ?>"><?= $st_display ?></span>
-                            </td>
-                            <td>
-                                <?php if ($_SESSION['user_id'] == $u['id'] || $_SESSION['role'] === 'admin'): ?>
-                                    <button type="button" class="action-btn btn-edit" onclick='openUserModal(<?= json_encode($u) ?>)'><i class="fa-solid fa-pen"></i></button>
-                                <?php endif; ?>
-
-                                <?php if ($_SESSION['role'] === 'admin'): ?>
-                                    <?php if ($_SESSION['user_id'] != $u['id']): ?>
-                                        <button type="button" class="action-btn btn-delete" onclick="deleteUser(<?= $u['id'] ?>, '<?= $u['username'] ?>')"><i class="fa-solid fa-trash"></i></button>
-                                    <?php endif; ?>
-                                <?php endif; ?>
-                            </td>
+                            <th>Username</th>
+                            <th>ชื่อ-นามสกุล</th>
+                            <th>Email</th>
+                            <th>เบอร์โทรศัพท์</th>
+                            <th>ตำแหน่ง</th>
+                            <th>สถานะ</th>
+                            <th>จัดการ</th>
                         </tr>
-                    <?php endwhile; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php while ($u = $query_users->fetch_assoc()): ?>
+                            <tr>
+                                <td style="font-weight:600"><?= htmlspecialchars($u['username']) ?></td>
+                                <td><?= htmlspecialchars($u['fullname']) ?></td>
+                                <td><?= isset($u['email']) ? htmlspecialchars($u['email']) : '-' ?></td>
+                                <td><?= isset($u['phone']) ? htmlspecialchars($u['phone']) : '-' ?></td>
+                                <td>
+                                    <?php
+                                    $role_display = ($u['role'] == 'admin') ? 'เจ้าของร้าน (Admin)' : 'พนักงาน (Staff)';
+                                    $role_class = ($u['role'] == 'admin') ? 'role-admin' : 'role-staff';
+                                    ?>
+                                    <span class="badge <?= $role_class ?>"><?= $role_display ?></span>
+                                </td>
+                                <td>
+                                    <?php
+                                    $st = isset($u['status']) ? $u['status'] : 'active';
+                                    $st_display = ($st == 'active') ? 'เปิดใช้งาน' : 'ระงับ';
+                                    $st_class = ($st == 'active') ? 'status-active' : 'status-inactive';
+                                    ?>
+                                    <span class="badge <?= $st_class ?>"><?= $st_display ?></span>
+                                </td>
+                                <td>
+                                    <?php if ($_SESSION['user_id'] == $u['id'] || $_SESSION['role'] === 'admin'): ?>
+                                        <button type="button" class="action-btn btn-edit"
+                                            onclick='openUserModal(<?= json_encode($u) ?>)'><i
+                                                class="fa-solid fa-pen"></i></button>
+                                    <?php endif; ?>
+
+                                    <?php if ($_SESSION['role'] === 'admin'): ?>
+                                        <?php if ($_SESSION['user_id'] != $u['id']): ?>
+                                            <button type="button" class="action-btn btn-delete"
+                                                onclick="deleteUser(<?= $u['id'] ?>, '<?= $u['username'] ?>')"><i
+                                                    class="fa-solid fa-trash"></i></button>
+                                        <?php endif; ?>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                        <?php endwhile; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -513,11 +534,13 @@ $query_users = $conn->query($sql);
                         </div>
                         <div class="form-group">
                             <label>รหัสผ่านใหม่</label>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="เปลี่ยนรหัสผ่าน">
+                            <input type="password" id="password" name="password" class="form-control"
+                                placeholder="เปลี่ยนรหัสผ่าน">
                         </div>
                         <div class="form-group">
                             <label>ยืนยันรหัสผ่าน</label>
-                            <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="ยืนยันรหัสผ่าน">
+                            <input type="password" id="confirm_password" name="confirm_password" class="form-control"
+                                placeholder="ยืนยันรหัสผ่าน">
                         </div>
                         <div class="form-group">
                             <label>ตำแหน่ง</label>
@@ -534,7 +557,8 @@ $query_users = $conn->query($sql);
         </div>
     </div>
 
-    <form id="deleteForm" method="post" style="display:none;"><input type="hidden" name="action" value="delete_user"><input type="hidden" name="del_id" id="del_id_input"></form>
+    <form id="deleteForm" method="post" style="display:none;"><input type="hidden" name="action"
+            value="delete_user"><input type="hidden" name="del_id" id="del_id_input"></form>
 
     <script>
         // ดึง user_id ของคนล็อกอินมาใช้ใน JS เพื่อเทียบว่าเป็นตัวเองหรือไม่
@@ -648,7 +672,7 @@ $query_users = $conn->query($sql);
                 }
             });
         }
-        window.onclick = function(e) {
+        window.onclick = function (e) {
             if (e.target == document.getElementById('userModal')) closeUserModal();
         }
     </script>

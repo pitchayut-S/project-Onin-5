@@ -519,6 +519,26 @@ $products = $conn->query($sql);
             color: #c0392b;
             font-weight: bold;
         }
+
+        .text-truncate-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 250px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .text-truncate-1 {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 150px;
+        }
+
+        @media (max-width: 768px) {}
     </style>
 </head>
 
@@ -611,30 +631,37 @@ $products = $conn->query($sql);
 
                                 $expired = ($row['exp_date'] != '0000-00-00' && $row['exp_date'] < date("Y-m-d"));
                                 ?>
-                                        <tr>
+                                <tr>
                                     <td><?= $i++ ?></td>
-                                    <td><?= $row['product_code'] ?></td>
+                                    <td style="white-space: nowrap;"><?= $row['product_code'] ?></td>
                                     <td><?php if ($row['image']): ?><img src="uploads/<?= $row['image'] ?>"
                                                 class="product-img"><?php else: ?><span
                                                 style="color:#777;">ไม่มีรูป</span><?php endif; ?></td>
                                     <td>
-                                        <?= $row['name'] ?>
-                                        <?php if ($expired): ?>
-                                            <br><span style="color:red; font-size:11px; font-weight:bold;"><i
-                                                    class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
-                                        <?php endif; ?>
+                                        <div class="text-truncate-2" title="<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>">
+                                            <?= $row['name'] ?>
+                                            <?php if ($expired): ?>
+                                                <br><span style="color:red; font-size:11px; font-weight:bold;"><i
+                                                        class="fa-solid fa-circle-exclamation"></i> หมดอายุ</span>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
-                                    <td><?= $row['category_name'] ?></td>
                                     <td>
+                                        <div class="text-truncate-1"
+                                            title="<?= htmlspecialchars($row['category_name'], ENT_QUOTES) ?>">
+                                            <?= $row['category_name'] ?>
+                                        </div>
+                                    </td>
+                                    <td style="white-space: nowrap;">
                                         <span class="badge <?= $badge ?>">
                                             <?= number_format($row['quantity']) ?>
                                             <?php echo isset($row['unit']) ? $row['unit'] : 'หน่วย'; ?> | <?= $label ?>
                                         </span>
                                     </td>
                                     <td style="<?= $expired ? 'color:red;font-weight:bold;' : '' ?>">
-                                                <?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?>
+                                        <?= ($row['exp_date'] && $row['exp_date'] != '0000-00-00') ? date('d/m/Y', strtotime($row['exp_date'])) : '-' ?>
                                     </td>
-                                    <td>
+                                    <td style="white-space: nowrap;">
                                         <button type="button"
                                             onclick="openStockModal(<?= $row['id'] ?>, '<?= htmlspecialchars($row['name'], ENT_QUOTES) ?>', <?= $row['quantity'] ?>, '<?= isset($row['unit']) ? $row['unit'] : 'หน่วย' ?>')"
                                             class="btn-adjust">
@@ -666,17 +693,17 @@ $products = $conn->query($sql);
                                 title="ย้อนกลับ"><i class="fa-solid fa-angle-left"></i></a>
                         <?php endif; ?>
 
-                            <?php
-                            $range = 2;
-                            for ($p = 1; $p <= $total_pages; $p++):
-                                if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
-                                    ?>
-                                            <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
+                        <?php
+                        $range = 2;
+                        for ($p = 1; $p <= $total_pages; $p++):
+                            if ($p == 1 || $p == $total_pages || ($p >= $page - $range && $p <= $page + $range)):
+                                ?>
+                                <a href="?page=<?= $p ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"
                                     class="<?= $page == $p ? 'active' : '' ?>"><?= $p ?></a>
                             <?php elseif (($p == $page - $range - 1) || ($p == $page + $range + 1)): ?>
                                 <span style="padding:8px; color:#999;">...</span>
-                                    <?php endif;
-                            endfor; ?>
+                            <?php endif;
+                        endfor; ?>
 
                         <?php if ($page < $total_pages): ?>
                             <a href="?page=<?= $page + 1 ?>&search=<?= urlencode($search_text) ?>&search_category=<?= urlencode($search_category) ?>&filter=<?= $filter ?>"

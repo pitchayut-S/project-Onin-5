@@ -498,7 +498,7 @@ $categories = $conn->query($sql);
                 timerProgressBar: true
             });
         </script>
-            <?php unset($_SESSION['swal']);
+        <?php unset($_SESSION['swal']);
     endif; ?>
 
 </body>

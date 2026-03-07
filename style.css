@@ -135,7 +135,6 @@ body.modal-open {
   font-size: 18px;
 }
 
-/* --- Sidebar Collapsed (สถานะพับเมนู) --- */
 body.sidebar-collapsed .sidebar {
   width: 70px;
 }
@@ -726,26 +725,37 @@ body.login-body {
 }
 
 @media (max-width: 768px) {
+
   /* จัดการ Sidebar ให้หดเล็กลงอัตโนมัติ */
   .sidebar {
     width: 70px;
   }
 
-  .sidebar-header,
-  .menu-text {
+  .sidebar-header {
     display: none;
+  }
+
+  /* ปิดการคลิกที่ลิงก์/ปุ่ม Toggle เพื่อไม่ให้เมนูกางออก */
+  #sidebarToggleBtn {
+    display: none;
+  }
+
+  .menu-text {
+    display: none !important;
   }
 
   .menu-list li a,
   .sidebar-footer li a {
     justify-content: center;
     padding: 15px 0;
+    width: 100%;
   }
 
   .menu-list li a i,
   .sidebar-footer li a i {
     width: auto;
     font-size: 24px;
+    margin: 0;
   }
 
   /* ขยายพื้นที่เนื้อหาหลักเมื่อ Sidebar หดลง */
@@ -773,4 +783,22 @@ body.login-body {
   .form-grid {
     grid-template-columns: 1fr;
   }
+
+  .table-scroll-container th,
+  .table-scroll-container td {
+    padding: 10px 5px;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  th,
+  td {
+    padding: 10px 5px !important;
+    border-bottom: 1px solid #eee;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+
 }

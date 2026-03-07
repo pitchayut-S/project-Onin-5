@@ -393,6 +393,8 @@ $products = $conn->query($sql);
         td {
             padding: 10px 5px !important;
             border-bottom: 1px solid #eee;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         th {
@@ -605,6 +607,26 @@ $products = $conn->query($sql);
             overflow: hidden;
             text-overflow: ellipsis;
             max-width: 150px;
+        }
+
+        @media (max-width: 768px) {
+
+            .table-scroll-container th,
+            .table-scroll-container td {
+                padding: 10px 5px !important;
+                border-bottom: 1px solid #eee;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+            th,
+            td {
+                padding: 10px 5px !important;
+                border-bottom: 1px solid #eee;
+                overflow: hidden !important;
+                white-space: nowrap !important;
+            }
         }
     </style>
 </head>

@@ -9,6 +9,7 @@ if (isset($_SESSION['username'])) {
 
 <!DOCTYPE html>
 <html lang="th">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,66 +17,329 @@ if (isset($_SESSION['username'])) {
     <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="icon" type="image/png" href="favicon.png">
-    
+
     <style>
         /* --- CSS เดิมทั้งหมด คงไว้ 100% --- */
-        :root { --primary: #356CB5; --primary-dark: #2a5298; --input-bg: #f0f2f5; --text-dark: #333; }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Prompt', sans-serif; }
-        body { height: 100vh; width: 100%; background: linear-gradient(180deg, #FFFFFF 30%, #8ab4e8 100%); display: flex; justify-content: center; align-items: center; flex-direction: column; overflow: hidden; }
-        .main-content { text-align: center; }
-        .main-title { color: #356CB5; font-size: 65px; margin-bottom: 0; font-weight: 700; }
-        .sub-title { font-size: 30px; margin-bottom: 20px; color: #555; }
-        .btn-start { padding: 10px 25px; font-size: 24px; border-radius: 10px; border: 1px solid #ffffff; cursor: pointer; background: white; color: #356CB5; font-weight: 700; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-        .btn-start:hover { transform: none; background-color: #356CB5; color: white; border-color: #356CB5; }
-        
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(5px); z-index: 1000; justify-content: center; align-items: center; }
-        .modal-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
-        .form-box { background: #fff; padding: 40px 50px; border-radius: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); width: 100%; position: relative; animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28); }
-        .login-size { max-width: 420px; }
-        .register-size { max-width: 750px; }
-        .close-btn { position: absolute; top: 5px; right: 25px; font-size: 30px; color: #ccc; cursor: pointer; transition: 0.2s; }
-        .close-btn:hover { color: var(--text-dark); }
-        .form-header { text-align: center; margin-bottom: 25px; }
-        .form-header h2 { color: var(--primary); font-size: 28px; font-weight: 600; }
-        .form-header p { color: #888; font-size: 14px; margin-top: 5px; }
-        
+        :root {
+            --primary: #356CB5;
+            --primary-dark: #2a5298;
+            --input-bg: #f0f2f5;
+            --text-dark: #333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Prompt', sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            width: 100%;
+            background: linear-gradient(180deg, #FFFFFF 30%, #8ab4e8 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .main-content {
+            text-align: center;
+        }
+
+        .main-title {
+            color: #356CB5;
+            font-size: 65px;
+            margin-bottom: 0;
+            font-weight: 700;
+        }
+
+        .sub-title {
+            font-size: 30px;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        .btn-start {
+            padding: 10px 25px;
+            font-size: 24px;
+            border-radius: 10px;
+            border: 1px solid #ffffff;
+            cursor: pointer;
+            background: white;
+            color: #356CB5;
+            font-weight: 700;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .btn-start:hover {
+            transform: none;
+            background-color: #356CB5;
+            color: white;
+            border-color: #356CB5;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .form-box {
+            background: #fff;
+            padding: 40px 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            position: relative;
+            animation: slideUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+        }
+
+        .login-size {
+            max-width: 420px;
+        }
+
+        .register-size {
+            max-width: 750px;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 25px;
+            font-size: 30px;
+            color: #ccc;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .close-btn:hover {
+            color: var(--text-dark);
+        }
+
+        .form-header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .form-header h2 {
+            color: var(--primary);
+            font-size: 28px;
+            font-weight: 600;
+        }
+
+        .form-header p {
+            color: #888;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+
         /* ปรับ margin-bottom เพิ่มนิดเดียวเพื่อเผื่อที่ให้ข้อความลอย */
-        .input-group { position: relative; margin-bottom: 20px; } 
-        
-        .input-icon { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #aaa; font-size: 16px; transition: 0.3s; }
-        .custom-input { width: 100%; padding: 12px 15px 12px 45px; border: 2px solid transparent; background-color: var(--input-bg); border-radius: 10px; font-size: 16px; color: #333; transition: all 0.3s; }
-        .custom-input::placeholder { color: #bbb; }
-        .custom-input:focus { background-color: #fff; border-color: var(--primary); box-shadow: 0 4px 10px rgba(53, 108, 181, 0.1); outline: none; }
-        .custom-input:focus + .input-icon { color: var(--primary); }
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .btn-submit { width: 100%; padding: 14px; background: #356cb5 !important; color: white; border: none; border-radius: 10px; font-size: 18px; font-weight: 500; cursor: pointer; margin-top: 10px; box-shadow: 0 4px 15px rgba(53, 108, 181, 0.3); transition: all 0.3s ease; }
-        .btn-submit:hover { transform: none; background-color: #0b4993; color: white; border-color: #0b4993; }
-        .switch-link { display: block; text-align: center; margin-top: 20px; font-size: 14px; color: #666; cursor: pointer; }
-        .switch-link b { color: var(--primary); font-weight: 600; }
-        .switch-link:hover b { text-decoration: underline; }
-        
-        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
-        @keyframes slideUp { from {opacity:0; transform:translateY(50px);} to {opacity:1; transform:translateY(0);} }
-        @media (max-width: 768px) { .form-grid { grid-template-columns: 1fr; gap: 0; } .form-box { padding: 30px 20px; width: 90%; } }
-        
-        div:where(.swal2-container) .swal2-popup, .swal2-title, .swal2-html-container { font-family: 'Prompt', sans-serif !important; }
+        .input-group {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #aaa;
+            font-size: 16px;
+            transition: 0.3s;
+        }
+
+        .custom-input {
+            width: 100%;
+            padding: 12px 15px 12px 45px;
+            border: 2px solid transparent;
+            background-color: var(--input-bg);
+            border-radius: 10px;
+            font-size: 16px;
+            color: #333;
+            transition: all 0.3s;
+        }
+
+        .custom-input::placeholder {
+            color: #bbb;
+        }
+
+        .custom-input:focus {
+            background-color: #fff;
+            border-color: var(--primary);
+            box-shadow: 0 4px 10px rgba(53, 108, 181, 0.1);
+            outline: none;
+        }
+
+        .custom-input:focus+.input-icon {
+            color: var(--primary);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            background: #356cb5 !important;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(53, 108, 181, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .btn-submit:hover {
+            transform: none;
+            background-color: #0b4993;
+            color: white;
+            border-color: #0b4993;
+        }
+
+        .switch-link {
+            display: block;
+            text-align: center;
+            margin-top: 20px;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+        }
+
+        .switch-link b {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .switch-link:hover b {
+            text-decoration: underline;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+                gap: 0;
+            }
+
+            .form-box {
+                padding: 30px 20px;
+                width: 90%;
+            }
+
+            .main-title {
+                font-size: 30px;
+            }
+
+            .sub-title {
+                font-size: 18px;
+            }
+
+            .btn-start {
+                font-size: 16px;
+            }
+
+            .table-scroll-container th,
+            .td {
+                padding: 10px 5px;
+                border-bottom: 1px solid #eee;
+                white-space: nowrap !important;
+                overflow: hidden !important;
+                text-overflow: ellipsis !important;
+            }
+
+        }
+
+        div:where(.swal2-container) .swal2-popup,
+        .swal2-title,
+        .swal2-html-container {
+            font-family: 'Prompt', sans-serif !important;
+        }
 
         /* --- จุดสำคัญ: ทำให้ข้อความลอย แล้วไม่ดัน Layout --- */
-        .msg-alert { 
-            position: absolute; /* ลอยอิสระ */
-            bottom: -18px;      /* อยู่ใต้กล่องพอดี */
+        .msg-alert {
+            position: absolute;
+            /* ลอยอิสระ */
+            bottom: -18px;
+            /* อยู่ใต้กล่องพอดี */
             left: 5px;
-            font-size: 11px; 
-            white-space: nowrap; /* ห้ามขึ้นบรรทัดใหม่ */
+            font-size: 11px;
+            white-space: nowrap;
+            /* ห้ามขึ้นบรรทัดใหม่ */
         }
-        
-        .text-red { color: #e74c3c; font-weight: 500; }
-        .text-green { color: #27ae60; font-weight: 500; }
-        .input-error { border-color: #e74c3c !important; background-color: #fff !important; }
-        .input-success { border-color: #27ae60 !important; background-color: #fff !important; }
-        .btn-submit:disabled { background-color: #ccc; cursor: not-allowed; box-shadow: none; }
+
+        .text-red {
+            color: #e74c3c;
+            font-weight: 500;
+        }
+
+        .text-green {
+            color: #27ae60;
+            font-weight: 500;
+        }
+
+        .input-error {
+            border-color: #e74c3c !important;
+            background-color: #fff !important;
+        }
+
+        .input-success {
+            border-color: #27ae60 !important;
+            background-color: #fff !important;
+        }
+
+        .btn-submit:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
     </style>
 </head>
+
 <body>
 
     <div class="main-content">
@@ -120,9 +384,11 @@ if (isset($_SESSION['username'])) {
                         <input type="text" name="fullname" class="custom-input" placeholder="ชื่อ-นามสกุล" required>
                         <i class="fa-solid fa-id-card input-icon"></i>
                     </div>
-                    
+
                     <div class="input-group">
-                        <input type="tel" name="phone" id="phone" class="custom-input" placeholder="เบอร์โทรศัพท์" required minlength="10" maxlength="10" pattern="[0-9]{10}" oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkPhone();">
+                        <input type="tel" name="phone" id="phone" class="custom-input" placeholder="เบอร์โทรศัพท์"
+                            required minlength="10" maxlength="10" pattern="[0-9]{10}"
+                            oninput="this.value = this.value.replace(/[^0-9]/g, ''); checkPhone();">
                         <i class="fa-solid fa-phone input-icon"></i>
                         <span id="phone_msg" class="msg-alert"></span>
                     </div>
@@ -131,19 +397,22 @@ if (isset($_SESSION['username'])) {
                         <input type="email" name="email" class="custom-input" placeholder="อีเมล" required>
                         <i class="fa-solid fa-envelope input-icon"></i>
                     </div>
-                    
+
                     <div class="input-group">
-                        <input type="text" name="username" id="username" class="custom-input" placeholder="ตั้งชื่อผู้ใช้งาน" required>
+                        <input type="text" name="username" id="username" class="custom-input"
+                            placeholder="ตั้งชื่อผู้ใช้งาน" required>
                         <i class="fa-solid fa-user-plus input-icon"></i>
                         <span id="username_msg" class="msg-alert"></span>
                     </div>
 
                     <div class="input-group">
-                        <input type="password" name="password" id="password" class="custom-input" placeholder="รหัสผ่าน" required>
+                        <input type="password" name="password" id="password" class="custom-input" placeholder="รหัสผ่าน"
+                            required>
                         <i class="fa-solid fa-lock input-icon"></i>
                     </div>
                     <div class="input-group">
-                        <input type="password" name="confirm_password" id="confirm_password" class="custom-input" placeholder="ยืนยันรหัสผ่าน" required>
+                        <input type="password" name="confirm_password" id="confirm_password" class="custom-input"
+                            placeholder="ยืนยันรหัสผ่าน" required>
                         <i class="fa-solid fa-check-circle input-icon"></i>
                         <span id="pass_msg" class="msg-alert"></span>
                     </div>
@@ -161,18 +430,22 @@ if (isset($_SESSION['username'])) {
             closeAllModals();
             document.getElementById(type + 'Modal').classList.add('active');
         }
+
         function closeAllModals() {
             document.querySelectorAll('.modal-overlay').forEach(el => el.classList.remove('active'));
         }
+
         function switchModal(to) {
             closeAllModals();
-            setTimeout(() => { openModal(to); }, 150);
+            setTimeout(() => {
+                openModal(to);
+            }, 150);
         }
-        window.onclick = function(e) {
+        window.onclick = function (e) {
             if (e.target.classList.contains('modal-overlay')) closeAllModals();
         }
 
-        $(document).ready(function() {
+        $(document).ready(function () {
             function checkFormValidity() {
                 if ($('.input-error').length > 0) {
                     $('#btn_submit').prop('disabled', true);
@@ -182,10 +455,12 @@ if (isset($_SESSION['username'])) {
             }
 
             // เช็ค Username
-            $('#username').on('blur keyup', function() {
+            $('#username').on('blur keyup', function () {
                 let val = $(this).val();
-                if(val.length >= 3) {
-                    $.post('check_availability.php', { username: val }, function(res) {
+                if (val.length >= 3) {
+                    $.post('check_availability.php', {
+                        username: val
+                    }, function (res) {
                         if (res == 'taken') {
                             $('#username_msg').html('<i class="fa-solid fa-circle-xmark"></i> มีผู้ใช้งานแล้ว').removeClass('text-green').addClass('text-red');
                             $('#username').removeClass('input-success').addClass('input-error');
@@ -202,10 +477,12 @@ if (isset($_SESSION['username'])) {
             });
 
             // เช็ค Phone
-            $('#phone').on('blur keyup', function() {
+            $('#phone').on('blur keyup', function () {
                 let val = $(this).val();
-                if(val.length >= 9) {
-                    $.post('check_availability.php', { phone: val }, function(res) {
+                if (val.length >= 9) {
+                    $.post('check_availability.php', {
+                        phone: val
+                    }, function (res) {
                         if (res == 'taken') {
                             $('#phone_msg').html('<i class="fa-solid fa-circle-xmark"></i> เบอร์นี้ใช้แล้ว').removeClass('text-green').addClass('text-red');
                             $('#phone').removeClass('input-success').addClass('input-error');
@@ -222,7 +499,7 @@ if (isset($_SESSION['username'])) {
             });
 
             // เช็ค Password
-            $('#confirm_password, #password').on('keyup', function() {
+            $('#confirm_password, #password').on('keyup', function () {
                 let pass = $('#password').val();
                 let confirm = $('#confirm_password').val();
                 if (pass && confirm) {
@@ -243,7 +520,7 @@ if (isset($_SESSION['username'])) {
                 let phone = phoneInput.value;
 
                 if (phone.length === 0) {
-                    phoneMsg.innerText = ""; 
+                    phoneMsg.innerText = "";
                 } else if (phone.length > 0 && phone.length < 10) {
                     // กรณีพิมพ์ไม่ครบ 10 ตัว
                     phoneMsg.innerText = "กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก";
@@ -252,23 +529,26 @@ if (isset($_SESSION['username'])) {
                     // กรณีครบ 10 ตัว -> ส่ง AJAX ไปเช็คในฐานข้อมูล
                     fetch('check_phone.php', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded'
+                        },
                         body: 'phone=' + encodeURIComponent(phone)
                     })
-                    .then(response => response.text())
-                    .then(data => {
-                        if (data.trim() === 'exists') {
-                            phoneMsg.innerText = "เบอร์โทรศัพท์นี้ถูกลงทะเบียนแล้ว!";
-                            phoneMsg.style.color = "#dc2626"; // สีแดง
-                            // สามารถใช้คำสั่งปิดปุ่ม Submit ตรงนี้ได้ถ้าต้องการ
-                        } else {
-                            phoneMsg.innerText = "สามารถใช้เบอร์โทรศัพท์นี้ได้";
-                            phoneMsg.style.color = "#16a34a"; // สีเขียว
-                        }
-                    });
+                        .then(response => response.text())
+                        .then(data => {
+                            if (data.trim() === 'exists') {
+                                phoneMsg.innerText = "เบอร์โทรศัพท์นี้ถูกลงทะเบียนแล้ว!";
+                                phoneMsg.style.color = "#dc2626"; // สีแดง
+                                // สามารถใช้คำสั่งปิดปุ่ม Submit ตรงนี้ได้ถ้าต้องการ
+                            } else {
+                                phoneMsg.innerText = "สามารถใช้เบอร์โทรศัพท์นี้ได้";
+                                phoneMsg.style.color = "#16a34a"; // สีเขียว
+                            }
+                        });
                 }
             }
         });
     </script>
 </body>
+
 </html>
