@@ -749,6 +749,7 @@ body.login-body {
     justify-content: center;
     padding: 15px 0;
     width: 100%;
+    pointer-events: auto;
   }
 
   .menu-list li a i,
